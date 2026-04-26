@@ -4,7 +4,7 @@ document.getElementById("btn-capture-tab").addEventListener("click", () => {
 });
 
 document.getElementById("btn-capture-region").addEventListener("click", () => {
-  // TODO: inject content script to let the user draw a selection region.
+  chrome.runtime.sendMessage({ type: "capture-region" });
   window.close();
 });
 
