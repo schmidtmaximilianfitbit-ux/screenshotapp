@@ -32,7 +32,7 @@
       background: "rgba(12,16,24,0.85)",
       padding: "9px 18px",
       borderRadius: "8px",
-      border: "1px solid rgba(99,102,241,0.4)",
+      border: "1px solid rgba(255,255,255,0.12)",
       pointerEvents: "none",
       whiteSpace: "nowrap",
       letterSpacing: "0.2px",
@@ -45,9 +45,8 @@
     style: css({
       position: "fixed",
       display: "none",
-      border: "2px solid rgba(99,102,241,0.95)",
-      // Large spread shadow darkens everything outside the selection rect.
-      boxShadow: "0 0 0 99999px rgba(0,0,0,0.5),inset 0 0 0 1px rgba(255,255,255,0.12)",
+      // Large spread shadow darkens everything outside the selection; no visible border on the rect itself.
+      boxShadow: "0 0 0 99999px rgba(0,0,0,0.48)",
       pointerEvents: "none",
       boxSizing: "border-box",
     }),
@@ -63,7 +62,7 @@
       background: "rgba(17,24,39,0.92)",
       padding: "3px 8px",
       borderRadius: "4px",
-      border: "1px solid rgba(99,102,241,0.45)",
+      border: "1px solid rgba(255,255,255,0.1)",
       pointerEvents: "none",
       whiteSpace: "nowrap",
     }),

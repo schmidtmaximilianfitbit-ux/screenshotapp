@@ -27,8 +27,16 @@
         "mac": "Command+Shift+S"
       },
       "description": "Capture the current tab"
+    },
+    "capture-region": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Select a region to capture"
     }
   },
+  "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
       "resources": ["editor/editor.html"],

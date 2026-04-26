@@ -65,6 +65,17 @@
         </div>
         <input type="range" id="sl-shadow" class="slider" min="0" max="100" value="40" />
 
+        <div class="ctrl-row">
+          <span class="ctrl-label">Inset Frame</span>
+          <span class="ctrl-value" id="val-inset">0px</span>
+        </div>
+        <input type="range" id="sl-inset" class="slider" min="0" max="40" value="0" />
+        <div class="inset-color-row">
+          <input type="color" id="inset-color-picker" class="inset-color-swatch" value="#ffffff" title="Inset frame color" />
+          <button id="btn-auto-sample" class="btn-color-action">Auto</button>
+          <button id="btn-eyedropper" class="btn-color-action">Pick</button>
+        </div>
+
         <div class="ctrl-row ctrl-row--solo">
           <span class="ctrl-label">Background</span>
         </div>
@@ -91,12 +102,6 @@
           <button class="pill" data-ratio="16:9">16:9</button>
           <button class="pill" data-ratio="1:1">1:1</button>
         </div>
-        <div class="pill-group pill-group--social">
-          <button class="pill" data-ratio="twitter">Twitter</button>
-          <button class="pill" data-ratio="linkedin">LinkedIn</button>
-          <button class="pill" data-ratio="insta">Insta</button>
-        </div>
-
         <div class="preset-header">
           <span class="ctrl-label">Presets</span>
           <button class="btn-set-default" id="btn-set-default">★ Set Default</button>

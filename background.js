@@ -23,6 +23,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.commands.onCommand.addListener((command) => {
   if (command === "capture-tab") captureTab();
+  if (command === "capture-region") captureRegion();
 });
 
 /* ── Message bus ─────────────────────────────────────────────── */

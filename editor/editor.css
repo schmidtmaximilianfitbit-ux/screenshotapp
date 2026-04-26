@@ -309,7 +309,6 @@ html, body {
   margin-bottom: 6px;
 }
 
-.pill-group--social { margin-top: 2px; }
 
 .pill {
   padding: 5px 11px;
@@ -472,6 +471,48 @@ html, body {
 .export-btn--primary:hover:not(:disabled) { background: #fb923c; }
 
 .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Inset color controls ────────────────────────────────── */
+.inset-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.inset-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #1e293b;
+  cursor: pointer;
+  padding: 0;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: none;
+}
+
+.inset-color-swatch::-webkit-color-swatch-wrapper { padding: 2px; }
+.inset-color-swatch::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+.btn-color-action {
+  flex: 1;
+  padding: 5px 0;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  background: #151c28;
+  color: #94a3b8;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-color-action:hover { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+.btn-color-action.active { background: #f97316; border-color: transparent; color: #0f172a; font-weight: 600; }
 
 /* ── Canvas fade-in ──────────────────────────────────────── */
 @keyframes sb-fadein {

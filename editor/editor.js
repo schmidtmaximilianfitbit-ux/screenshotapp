@@ -16,20 +16,15 @@ const BG_PRESETS = {
 };
 
 const RATIOS = {
-  'auto':     null,
-  '4:3':      { r: 4 / 3 },
-  '3:2':      { r: 3 / 2 },
-  '16:9':     { r: 16 / 9 },
-  '1:1':      { r: 1 },
-  'twitter':  { w: 1200, h: 675 },
-  'linkedin': { w: 1200, h: 627 },
-  'insta':    { w: 1080, h: 1080 },
+  'auto':  null,
+  '4:3':   { r: 4 / 3 },
+  '3:2':   { r: 3 / 2 },
+  '16:9':  { r: 16 / 9 },
+  '1:1':   { r: 1 },
 };
 
 const BUILTIN_PRESETS = [
-  { name: 'Clean',  padding: 32, radius:  8, shadow: 20, bg: 'slate', ratio: 'auto'    },
-  { name: 'Social', padding: 64, radius: 16, shadow: 60, bg: 'ocean', ratio: 'twitter' },
-  { name: 'Bold',   padding: 80, radius: 20, shadow: 80, bg: 'ember', ratio: 'auto'    },
+  { name: 'Clean', padding: 32, radius: 8, shadow: 20, bg: 'slate', ratio: 'auto', inset: 0, insetColor: '#ffffff' },
 ];
 
 /* ── State ────────────────────────────────────────────────── */
@@ -41,6 +36,8 @@ const S = {
   shadow:      40,
   bg:          'ember',
   ratio:       'auto',
+  inset:       0,
+  insetColor:  '#ffffff',
   tool:        'pointer',
   color:       '#f97316',
   lw:          3,
@@ -54,6 +51,9 @@ let lastDims = null;
 
 // User-created presets synced from chrome.storage.sync.
 let userPresets = [];
+
+// Whether the eyedropper (pick-from-canvas) mode is active.
+let eyedropperActive = false;
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 
@@ -100,7 +100,7 @@ function computeDimensions() {
 }
 
 function drawBaseLayer(c, w, h, img, imgX, imgY) {
-  const { radius, shadow, bg } = S;
+  const { radius, shadow, bg, insetColor } = S;
   const stops = BG_PRESETS[bg];
 
   // Background
@@ -127,20 +127,35 @@ function drawBaseLayer(c, w, h, img, imgX, imgY) {
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
 
-  // Shadow — draw a filled rrect first so the shadow extends outside the clip.
-  // The image drawn afterwards covers the opaque black fill exactly.
+  // Inset frame: a solid-color border between the background and the screenshot.
+  // Clamped so it never exceeds the available padding on any side.
+  const safeInset = Math.max(0, Math.min(S.inset, Math.min(imgX, imgY) - 2));
+  const frameX = imgX - safeInset;
+  const frameY = imgY - safeInset;
+  const frameW = iw + safeInset * 2;
+  const frameH = ih + safeInset * 2;
+  const frameR = radius + safeInset * 0.6;
+
+  // Shadow — cast from the outer frame rect so it radiates outside the inset border.
+  // When inset = 0 the frame equals the image rect; '#000' fill is covered by the image.
   if (shadow > 0) {
     c.save();
     c.shadowColor   = `rgba(0,0,0,${(shadow / 100) * 0.6})`;
     c.shadowBlur    = shadow * 1.5;
     c.shadowOffsetY = shadow * 0.4;
-    rrectPath(c, imgX, imgY, iw, ih, radius);
-    c.fillStyle = '#000';
+    rrectPath(c, frameX, frameY, frameW, frameH, frameR);
+    c.fillStyle = safeInset > 0 ? insetColor : '#000';
+    c.fill();
+    c.restore();
+  } else if (safeInset > 0) {
+    c.save();
+    rrectPath(c, frameX, frameY, frameW, frameH, frameR);
+    c.fillStyle = insetColor;
     c.fill();
     c.restore();
   }
 
-  // Screenshot clipped to rounded rect
+  // Screenshot clipped to image rounded rect (covers the center of the inset frame).
   c.save();
   rrectPath(c, imgX, imgY, iw, ih, radius);
   c.clip();
@@ -315,6 +330,19 @@ let mouseDown = false;
 
 canvas.addEventListener('mousedown', (e) => {
   if (!S.img || e.button !== 0) return;
+
+  if (eyedropperActive) {
+    const { x, y } = getCoords(e);
+    const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+    S.insetColor = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('inset-color-picker').value = S.insetColor;
+    eyedropperActive = false;
+    document.getElementById('btn-eyedropper').classList.remove('active');
+    updateUI();
+    render();
+    return;
+  }
+
   mouseDown = true;
   const { x, y } = getCoords(e);
 
@@ -465,6 +493,7 @@ function updateUI() {
 
   if (has) {
     canvas.style.cursor =
+      eyedropperActive     ? 'crosshair' :
       S.tool === 'pointer' ? 'default'   :
       S.tool === 'text'    ? 'text'      : 'crosshair';
   }
@@ -493,6 +522,60 @@ function updateUI() {
 document.getElementById('sl-lw').addEventListener('input', function () {
   S.lw = +this.value;
   document.getElementById('val-lw').textContent = S.lw + 'px';
+});
+
+document.getElementById('sl-inset').addEventListener('input', function () {
+  S.inset = +this.value;
+  document.getElementById('val-inset').textContent = S.inset + 'px';
+  render();
+});
+
+document.getElementById('inset-color-picker').addEventListener('input', function () {
+  S.insetColor = this.value;
+  render();
+});
+
+/* ── Inset color helpers ──────────────────────────────────── */
+
+function sampleEdgeColor() {
+  if (!S.img) return;
+  const w = S.img.naturalWidth;
+  const h = S.img.naturalHeight;
+  const tmp = document.createElement('canvas');
+  tmp.width = w;
+  tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(S.img, 0, 0);
+
+  let r = 0, g = 0, b = 0, n = 0;
+  const N = 24;
+  const add = (x, y) => {
+    const d = tctx.getImageData(
+      Math.max(0, Math.min(Math.round(x), w - 1)),
+      Math.max(0, Math.min(Math.round(y), h - 1)), 1, 1).data;
+    r += d[0]; g += d[1]; b += d[2]; n++;
+  };
+  // Sample a ring of pixels evenly along all four edges.
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    add(t * (w - 1), 0);
+    add(t * (w - 1), h - 1);
+    add(0, t * (h - 1));
+    add(w - 1, t * (h - 1));
+  }
+
+  r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+  S.insetColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  document.getElementById('inset-color-picker').value = S.insetColor;
+  render();
+}
+
+document.getElementById('btn-auto-sample').addEventListener('click', sampleEdgeColor);
+
+document.getElementById('btn-eyedropper').addEventListener('click', () => {
+  eyedropperActive = !eyedropperActive;
+  document.getElementById('btn-eyedropper').classList.toggle('active', eyedropperActive);
+  updateUI();
 });
 
 // Background swatches
@@ -546,20 +629,25 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 /* ── Preset management ────────────────────────────────────── */
 
-function applySettings({ padding, radius, shadow, bg, ratio }) {
-  S.padding = padding;
-  S.radius  = radius;
-  S.shadow  = shadow;
-  S.bg      = bg;
-  S.ratio   = ratio;
+function applySettings({ padding, radius, shadow, bg, ratio, inset = 0, insetColor = '#ffffff' }) {
+  S.padding    = padding;
+  S.radius     = radius;
+  S.shadow     = shadow;
+  S.bg         = bg;
+  S.ratio      = ratio;
+  S.inset      = inset;
+  S.insetColor = insetColor;
 
   // Sync slider positions and displayed values
-  document.getElementById('sl-padding').value       = padding;
-  document.getElementById('val-padding').textContent = padding + 'px';
-  document.getElementById('sl-radius').value        = radius;
-  document.getElementById('val-radius').textContent  = radius + 'px';
-  document.getElementById('sl-shadow').value        = shadow;
-  document.getElementById('val-shadow').textContent  = shadow + '%';
+  document.getElementById('sl-padding').value        = padding;
+  document.getElementById('val-padding').textContent  = padding + 'px';
+  document.getElementById('sl-radius').value         = radius;
+  document.getElementById('val-radius').textContent   = radius + 'px';
+  document.getElementById('sl-shadow').value         = shadow;
+  document.getElementById('val-shadow').textContent   = shadow + '%';
+  document.getElementById('sl-inset').value          = inset;
+  document.getElementById('val-inset').textContent    = inset + 'px';
+  document.getElementById('inset-color-picker').value = insetColor;
 
   // Sync active swatch
   document.querySelectorAll('.swatch').forEach(b =>
@@ -628,11 +716,13 @@ document.getElementById('btn-save-preset').addEventListener('click', () => {
 
   const settings = {
     name,
-    padding: S.padding,
-    radius:  S.radius,
-    shadow:  S.shadow,
-    bg:      S.bg,
-    ratio:   S.ratio,
+    padding:    S.padding,
+    radius:     S.radius,
+    shadow:     S.shadow,
+    bg:         S.bg,
+    ratio:      S.ratio,
+    inset:      S.inset,
+    insetColor: S.insetColor,
   };
 
   // Overwrite if name already exists, otherwise append.
