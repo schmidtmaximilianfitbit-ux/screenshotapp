@@ -472,3 +472,126 @@ html, body {
 .export-btn--primary:hover:not(:disabled) { background: #fb923c; }
 
 .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Presets section ─────────────────────────────────────── */
+.preset-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 8px;
+}
+
+.btn-set-default {
+  background: transparent;
+  border: 1px solid #1e293b;
+  border-radius: 5px;
+  color: #64748b;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-set-default:hover { border-color: #f97316; color: #f97316; }
+
+.btn-set-default.saved {
+  background: #f97316;
+  border-color: transparent;
+  color: #0f172a;
+}
+
+.preset-save-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.preset-save-row input {
+  flex: 1;
+  min-width: 0;
+  background: #0a0e15;
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  padding: 5px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.preset-save-row input:focus { border-color: #f97316; }
+.preset-save-row input::placeholder { color: #334155; }
+
+.btn-save-preset {
+  flex-shrink: 0;
+  background: #1e293b;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #94a3b8;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-save-preset:hover { background: #f97316; color: #0f172a; }
+
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: #0a0e15;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.preset-chip:hover { background: #111827; border-color: #f97316; color: #e2e8f0; }
+
+/* Dot indicator on built-in chips */
+.preset-chip--builtin::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f97316;
+  flex-shrink: 0;
+}
+
+.preset-chip__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.preset-chip__delete:hover { background: rgba(239,68,68,0.15); color: #ef4444; }

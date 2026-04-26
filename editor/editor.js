@@ -26,6 +26,12 @@ const RATIOS = {
   'insta':    { w: 1080, h: 1080 },
 };
 
+const BUILTIN_PRESETS = [
+  { name: 'Clean',  padding: 32, radius:  8, shadow: 20, bg: 'slate', ratio: 'auto'    },
+  { name: 'Social', padding: 64, radius: 16, shadow: 60, bg: 'ocean', ratio: 'twitter' },
+  { name: 'Bold',   padding: 80, radius: 20, shadow: 80, bg: 'ember', ratio: 'auto'    },
+];
+
 /* ── State ────────────────────────────────────────────────── */
 
 const S = {
@@ -45,6 +51,9 @@ const S = {
 
 // Set by render(); used by zoom lens to map canvas→image coordinates.
 let lastDims = null;
+
+// User-created presets synced from chrome.storage.sync.
+let userPresets = [];
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 
@@ -518,6 +527,127 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+/* ── Preset management ────────────────────────────────────── */
+
+function applySettings({ padding, radius, shadow, bg, ratio }) {
+  S.padding = padding;
+  S.radius  = radius;
+  S.shadow  = shadow;
+  S.bg      = bg;
+  S.ratio   = ratio;
+
+  // Sync slider positions and displayed values
+  document.getElementById('sl-padding').value       = padding;
+  document.getElementById('val-padding').textContent = padding + 'px';
+  document.getElementById('sl-radius').value        = radius;
+  document.getElementById('val-radius').textContent  = radius + 'px';
+  document.getElementById('sl-shadow').value        = shadow;
+  document.getElementById('val-shadow').textContent  = shadow + '%';
+
+  // Sync active swatch
+  document.querySelectorAll('.swatch').forEach(b =>
+    b.classList.toggle('active', b.dataset.bg === bg)
+  );
+
+  // Sync active ratio pill
+  document.querySelectorAll('.pill').forEach(b =>
+    b.classList.toggle('active', b.dataset.ratio === ratio)
+  );
+
+  render();
+}
+
+function renderPresetChips() {
+  const container = document.getElementById('preset-chips');
+  container.innerHTML = '';
+
+  [...BUILTIN_PRESETS, ...userPresets].forEach(preset => {
+    const isBuiltin = BUILTIN_PRESETS.some(p => p.name === preset.name);
+    const chip = document.createElement('button');
+    chip.className = 'preset-chip' + (isBuiltin ? ' preset-chip--builtin' : '');
+    chip.dataset.name = preset.name;
+    chip.title = `${preset.bg} · ${preset.ratio} · padding ${preset.padding}px`;
+
+    const label = document.createElement('span');
+    label.textContent = preset.name;
+    chip.appendChild(label);
+
+    if (!isBuiltin) {
+      const del = document.createElement('button');
+      del.className = 'preset-chip__delete';
+      del.textContent = '×';
+      del.title = 'Delete preset';
+      chip.appendChild(del);
+    }
+
+    container.appendChild(chip);
+  });
+}
+
+// Event delegation: apply on chip click, delete on × click.
+document.getElementById('preset-chips').addEventListener('click', (e) => {
+  const chip = e.target.closest('.preset-chip');
+  if (!chip) return;
+
+  if (e.target.closest('.preset-chip__delete')) {
+    const name = chip.dataset.name;
+    userPresets = userPresets.filter(p => p.name !== name);
+    chrome.storage.sync.set({ presets: userPresets });
+    renderPresetChips();
+    return;
+  }
+
+  const name = chip.dataset.name;
+  const preset =
+    BUILTIN_PRESETS.find(p => p.name === name) ||
+    userPresets.find(p => p.name === name);
+  if (preset) applySettings(preset);
+});
+
+document.getElementById('btn-save-preset').addEventListener('click', () => {
+  const input = document.getElementById('preset-name-input');
+  const name  = input.value.trim();
+  if (!name) { input.focus(); return; }
+
+  const settings = {
+    name,
+    padding: S.padding,
+    radius:  S.radius,
+    shadow:  S.shadow,
+    bg:      S.bg,
+    ratio:   S.ratio,
+  };
+
+  // Overwrite if name already exists, otherwise append.
+  const idx = userPresets.findIndex(p => p.name === name);
+  if (idx >= 0) userPresets[idx] = settings;
+  else          userPresets.push(settings);
+
+  chrome.storage.sync.set({ presets: userPresets });
+  renderPresetChips();
+  input.value = '';
+});
+
+// Also save on Enter inside the name input.
+document.getElementById('preset-name-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-save-preset').click();
+  e.stopPropagation();
+});
+
+document.getElementById('btn-set-default').addEventListener('click', () => {
+  const settings = {
+    padding: S.padding, radius: S.radius, shadow: S.shadow,
+    bg: S.bg, ratio: S.ratio,
+  };
+  chrome.storage.sync.set({ defaultSettings: settings }, () => {
+    const btn = document.getElementById('btn-set-default');
+    const prev = btn.textContent;
+    btn.textContent = '✓ Saved';
+    btn.classList.add('saved');
+    setTimeout(() => { btn.textContent = prev; btn.classList.remove('saved'); }, 1800);
+  });
+});
+
 /* ── Export ───────────────────────────────────────────────── */
 
 btnCopy.addEventListener('click', () => {
@@ -559,14 +689,21 @@ function loadImage(src) {
   img.src = src;
 }
 
-// From extension capture
-chrome.storage.local.get('capturedImage', ({ capturedImage }) => {
-  if (capturedImage) {
-    chrome.storage.local.remove('capturedImage');
-    loadImage(capturedImage);
-  } else {
-    updateUI();
-  }
+// Load user presets + default settings from sync, then load any pending capture.
+chrome.storage.sync.get(['presets', 'defaultSettings'], ({ presets, defaultSettings }) => {
+  userPresets = presets || [];
+  renderPresetChips();
+
+  if (defaultSettings) applySettings(defaultSettings);
+
+  chrome.storage.local.get('capturedImage', ({ capturedImage }) => {
+    if (capturedImage) {
+      chrome.storage.local.remove('capturedImage');
+      loadImage(capturedImage);
+    } else {
+      updateUI();
+    }
+  });
 });
 
 // File browser
