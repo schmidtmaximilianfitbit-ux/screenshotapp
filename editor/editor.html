@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapBeauty — Editor</title>
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <div id="toolbar">
+    <span class="tool-logo">SnapBeauty</span>
+
+    <div class="tool-group">
+      <button class="tool-btn" id="tool-select" title="Select">&#9654;</button>
+      <button class="tool-btn" id="tool-pen" title="Draw">&#9998;</button>
+      <button class="tool-btn" id="tool-arrow" title="Arrow">&#8599;</button>
+      <button class="tool-btn" id="tool-text" title="Text">T</button>
+      <button class="tool-btn" id="tool-rect" title="Rectangle">&#9635;</button>
+    </div>
+
+    <div class="tool-group tool-group--right">
+      <button class="tool-btn btn-action" id="btn-copy" title="Copy to clipboard">Copy</button>
+      <button class="tool-btn btn-action btn-primary" id="btn-save" title="Save image">Save</button>
+    </div>
+  </div>
+
+  <main id="canvas-container">
+    <canvas id="canvas"></canvas>
+  </main>
+
+  <script src="editor.js"></script>
+</body>
+</html>

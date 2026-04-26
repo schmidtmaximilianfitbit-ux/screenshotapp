@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapBeauty</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 280px;
+      background: #0c1018;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      padding: 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    header .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 7px;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      background: linear-gradient(135deg, #a5b4fc, #c4b5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #1e2736;
+      border-radius: 8px;
+      background: #111827;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      text-align: left;
+    }
+
+    .btn:hover {
+      background: #1a2333;
+      border-color: #6366f1;
+      color: #e2e8f0;
+    }
+
+    .btn:active {
+      background: #1e2a3f;
+    }
+
+    .btn .icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-color: transparent;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #5b52f0, #8b46f5);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .shortcut {
+      margin-left: auto;
+      font-size: 10px;
+      color: #64748b;
+      background: #0c1018;
+      border: 1px solid #1e2736;
+      border-radius: 4px;
+      padding: 2px 5px;
+      letter-spacing: 0.5px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #1a2030;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"></div>
+    <h1>SnapBeauty</h1>
+  </header>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="btn-capture-tab">
+      <span class="icon">📸</span>
+      Capture Tab
+      <span class="shortcut">⌘⇧S</span>
+    </button>
+
+    <button class="btn" id="btn-capture-region">
+      <span class="icon">✂️</span>
+      Capture Region
+    </button>
+
+    <div class="divider"></div>
+
+    <button class="btn" id="btn-settings">
+      <span class="icon">⚙️</span>
+      Settings
+    </button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
