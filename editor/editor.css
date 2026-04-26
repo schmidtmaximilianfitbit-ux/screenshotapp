@@ -473,6 +473,16 @@ html, body {
 
 .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* ── Canvas fade-in ──────────────────────────────────────── */
+@keyframes sb-fadein {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.canvas-fadein {
+  animation: sb-fadein 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* ── Presets section ─────────────────────────────────────── */
 .preset-header {
   display: flex;

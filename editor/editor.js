@@ -432,9 +432,26 @@ document.getElementById('btn-clear-ann').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   const mod = e.metaKey || e.ctrlKey;
-  if (!mod || e.key.toLowerCase() !== 'z') return;
-  e.preventDefault();
-  e.shiftKey ? redo() : undo();
+  if (!mod) return;
+
+  const key = e.key.toLowerCase();
+
+  if (key === 'z') {
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+    return;
+  }
+
+  if (key === 'c') {
+    e.preventDefault();
+    btnCopy.click();
+    return;
+  }
+
+  if (key === 's') {
+    e.preventDefault();
+    btnExport.click();
+  }
 });
 
 /* ── UI state sync ────────────────────────────────────────── */
@@ -657,10 +674,13 @@ btnCopy.addEventListener('click', () => {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       btnCopy.textContent = '✓ Copied!';
       btnCopy.classList.add('success');
+      chrome.action.setBadgeText({ text: '✓' });
+      chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
       setTimeout(() => {
         btnCopy.textContent = '⌘C  Copy to Clipboard';
         btnCopy.classList.remove('success');
-      }, 1800);
+        chrome.action.setBadgeText({ text: '' });
+      }, 2000);
     } catch (err) {
       console.error('Clipboard write failed:', err);
     }
@@ -685,6 +705,9 @@ function loadImage(src) {
     S.undone  = [];
     S.current = null;
     render();
+    canvas.classList.remove('canvas-fadein');
+    void canvas.offsetHeight; // force reflow to restart animation
+    canvas.classList.add('canvas-fadein');
   };
   img.src = src;
 }

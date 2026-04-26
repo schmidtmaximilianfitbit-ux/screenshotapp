@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+  </defs>
+  <!-- Body -->
+  <rect x="8" y="36" width="112" height="76" rx="14" fill="url(#g)"/>
+  <!-- Viewfinder bump -->
+  <path d="M44 36V22q0-6 6-6h28q6 0 6 6v14" fill="url(#g)"/>
+  <!-- Lens dark ring -->
+  <circle cx="64" cy="74" r="24" fill="#0f172a"/>
+  <!-- Lens orange ring -->
+  <circle cx="64" cy="74" r="16" fill="none" stroke="#f97316" stroke-width="3.5"/>
+  <!-- Lens glow center -->
+  <circle cx="64" cy="74" r="7" fill="#f97316" opacity=".55"/>
+  <!-- Flash LED -->
+  <circle cx="99" cy="53" r="5.5" fill="#0f172a"/>
+  <!-- Highlight -->
+  <circle cx="56" cy="66" r="4.5" fill="white" opacity=".3"/>
+</svg>
