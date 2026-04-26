@@ -6,16 +6,18 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
-// Load the captured screenshot from session storage.
-chrome.storage.session.get("pendingCapture", ({ pendingCapture }) => {
-  if (!pendingCapture) return;
+// Load the captured screenshot then immediately clear it so stale data never
+// appears if the editor is reopened manually.
+chrome.storage.local.get("capturedImage", ({ capturedImage }) => {
+  if (!capturedImage) return;
+  chrome.storage.local.remove("capturedImage");
   const img = new Image();
   img.onload = () => {
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
     ctx.drawImage(img, 0, 0);
   };
-  img.src = pendingCapture;
+  img.src = capturedImage;
 });
 
 // Tool selection.

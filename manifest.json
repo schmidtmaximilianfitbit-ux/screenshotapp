@@ -3,7 +3,7 @@
   "name": "SnapBeauty",
   "version": "1.0.0",
   "description": "Capture and beautify screenshots with annotations.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "notifications"],
   "background": {
     "service_worker": "background.js"
   },
