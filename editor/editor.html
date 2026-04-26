@@ -4,30 +4,159 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapBeauty — Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="editor.css" />
 </head>
 <body>
-  <div id="toolbar">
-    <span class="tool-logo">SnapBeauty</span>
+<div id="app">
 
-    <div class="tool-group">
-      <button class="tool-btn" id="tool-select" title="Select">&#9654;</button>
-      <button class="tool-btn" id="tool-pen" title="Draw">&#9998;</button>
-      <button class="tool-btn" id="tool-arrow" title="Arrow">&#8599;</button>
-      <button class="tool-btn" id="tool-text" title="Text">T</button>
-      <button class="tool-btn" id="tool-rect" title="Rectangle">&#9635;</button>
-    </div>
+  <!-- ── Canvas area ─────────────────────────────────────── -->
+  <div id="canvas-area">
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
 
-    <div class="tool-group tool-group--right">
-      <button class="tool-btn btn-action" id="btn-copy" title="Copy to clipboard">Copy</button>
-      <button class="tool-btn btn-action btn-primary" id="btn-save" title="Save image">Save</button>
+      <div id="drop-zone">
+        <span class="dz-icon">📷</span>
+        <p class="dz-title">Drop a screenshot here</p>
+        <p class="dz-sub">or paste with ⌘V</p>
+        <label class="dz-browse" for="file-input">Browse Files</label>
+        <input type="file" id="file-input" accept="image/*" />
+      </div>
+
+      <button id="btn-clear-image" class="clear-btn" hidden>Clear image</button>
     </div>
   </div>
 
-  <main id="canvas-container">
-    <canvas id="canvas"></canvas>
-  </main>
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside id="sidebar">
 
-  <script src="editor.js"></script>
+    <div id="sb-header">
+      <div class="sb-logo"><span class="snap">Snap</span><span class="beauty">Beauty</span></div>
+      <div class="sb-tagline">screenshot beautifier</div>
+    </div>
+
+    <div id="tab-switcher">
+      <button class="tab-btn active" data-tab="style">Style</button>
+      <button class="tab-btn" data-tab="annotate">Annotate</button>
+    </div>
+
+    <div id="tab-panels">
+
+      <!-- Style panel -->
+      <div id="panel-style" class="panel active">
+
+        <div class="ctrl-row">
+          <span class="ctrl-label">Padding</span>
+          <span class="ctrl-value" id="val-padding">48px</span>
+        </div>
+        <input type="range" id="sl-padding" class="slider" min="0" max="120" value="48" />
+
+        <div class="ctrl-row">
+          <span class="ctrl-label">Border Radius</span>
+          <span class="ctrl-value" id="val-radius">12px</span>
+        </div>
+        <input type="range" id="sl-radius" class="slider" min="0" max="40" value="12" />
+
+        <div class="ctrl-row">
+          <span class="ctrl-label">Shadow</span>
+          <span class="ctrl-value" id="val-shadow">40%</span>
+        </div>
+        <input type="range" id="sl-shadow" class="slider" min="0" max="100" value="40" />
+
+        <div class="ctrl-row ctrl-row--solo">
+          <span class="ctrl-label">Background</span>
+        </div>
+        <div class="swatch-grid" id="bg-swatches">
+          <button class="swatch active" data-bg="ember"   title="Ember"></button>
+          <button class="swatch"        data-bg="ocean"   title="Ocean"></button>
+          <button class="swatch"        data-bg="aurora"  title="Aurora"></button>
+          <button class="swatch"        data-bg="sunset"  title="Sunset"></button>
+          <button class="swatch"        data-bg="mint"    title="Mint"></button>
+          <button class="swatch"        data-bg="slate"   title="Slate"></button>
+          <button class="swatch"        data-bg="rose"    title="Rose"></button>
+          <button class="swatch"        data-bg="night"   title="Night"></button>
+          <button class="swatch"        data-bg="peach"   title="Peach"></button>
+          <button class="swatch swatch--checker" data-bg="none" title="None"></button>
+        </div>
+
+        <div class="ctrl-row ctrl-row--solo">
+          <span class="ctrl-label">Ratio</span>
+        </div>
+        <div class="pill-group">
+          <button class="pill active" data-ratio="auto">Auto</button>
+          <button class="pill" data-ratio="4:3">4:3</button>
+          <button class="pill" data-ratio="3:2">3:2</button>
+          <button class="pill" data-ratio="16:9">16:9</button>
+          <button class="pill" data-ratio="1:1">1:1</button>
+        </div>
+        <div class="pill-group pill-group--social">
+          <button class="pill" data-ratio="twitter">Twitter</button>
+          <button class="pill" data-ratio="linkedin">LinkedIn</button>
+          <button class="pill" data-ratio="insta">Insta</button>
+        </div>
+
+      </div><!-- /panel-style -->
+
+      <!-- Annotate panel -->
+      <div id="panel-annotate" class="panel">
+
+        <div class="ctrl-row ctrl-row--solo">
+          <span class="ctrl-label">Tool</span>
+        </div>
+        <div class="tool-grid">
+          <button class="tool-cell active" data-tool="pointer"   title="Pointer">↖</button>
+          <button class="tool-cell"        data-tool="draw"      title="Draw">✏</button>
+          <button class="tool-cell"        data-tool="line"      title="Line">╱</button>
+          <button class="tool-cell"        data-tool="arrow"     title="Arrow">→</button>
+          <button class="tool-cell"        data-tool="rect"      title="Rectangle">□</button>
+          <button class="tool-cell"        data-tool="ellipse"   title="Ellipse">○</button>
+          <button class="tool-cell"        data-tool="highlight" title="Highlight">█</button>
+          <button class="tool-cell tool-cell--serif" data-tool="text" title="Text">T</button>
+          <button class="tool-cell"        data-tool="zoom"      title="Zoom Lens">⊕</button>
+        </div>
+
+        <div class="ctrl-row ctrl-row--solo">
+          <span class="ctrl-label">Color</span>
+        </div>
+        <div class="color-row">
+          <button class="color-dot active" data-color="#f97316" style="background:#f97316"></button>
+          <button class="color-dot"        data-color="#ef4444" style="background:#ef4444"></button>
+          <button class="color-dot"        data-color="#22c55e" style="background:#22c55e"></button>
+          <button class="color-dot"        data-color="#3b82f6" style="background:#3b82f6"></button>
+          <button class="color-dot"        data-color="#eab308" style="background:#eab308"></button>
+          <button class="color-dot"        data-color="#a855f7" style="background:#a855f7"></button>
+          <button class="color-dot"        data-color="#ec4899" style="background:#ec4899"></button>
+          <button class="color-dot"        data-color="#ffffff" style="background:#ffffff"></button>
+          <button class="color-dot color-dot--dark" data-color="#000000" style="background:#000000"></button>
+        </div>
+
+        <div class="ctrl-row">
+          <span class="ctrl-label">Line Width</span>
+          <span class="ctrl-value" id="val-lw">3px</span>
+        </div>
+        <input type="range" id="sl-lw" class="slider" min="1" max="12" value="3" />
+
+        <div class="action-row">
+          <button class="action-btn" id="btn-undo" disabled>↩ Undo</button>
+          <button class="action-btn" id="btn-redo" disabled>↪ Redo</button>
+        </div>
+        <button class="action-btn action-btn--full" id="btn-clear-ann">🗑 Clear All</button>
+
+        <p class="tip-text">Tip: Cmd+Z / Cmd+Shift+Z</p>
+
+      </div><!-- /panel-annotate -->
+
+    </div><!-- /tab-panels -->
+
+    <div id="export-area">
+      <button class="export-btn export-btn--copy" id="btn-copy" disabled>⌘C  Copy to Clipboard</button>
+      <button class="export-btn export-btn--primary" id="btn-export" disabled>↓  Export PNG</button>
+    </div>
+
+  </aside>
+</div>
+<script src="editor.js"></script>
 </body>
 </html>
