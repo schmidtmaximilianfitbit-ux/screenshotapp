@@ -80,16 +80,39 @@
           <span class="ctrl-label">Background</span>
         </div>
         <div class="swatch-grid" id="bg-swatches">
-          <button class="swatch active" data-bg="ember"   title="Ember"></button>
-          <button class="swatch"        data-bg="ocean"   title="Ocean"></button>
-          <button class="swatch"        data-bg="aurora"  title="Aurora"></button>
-          <button class="swatch"        data-bg="sunset"  title="Sunset"></button>
-          <button class="swatch"        data-bg="mint"    title="Mint"></button>
-          <button class="swatch"        data-bg="slate"   title="Slate"></button>
-          <button class="swatch"        data-bg="rose"    title="Rose"></button>
-          <button class="swatch"        data-bg="night"   title="Night"></button>
-          <button class="swatch"        data-bg="peach"   title="Peach"></button>
+          <button class="swatch active" data-bg="flink"     title="Flink"></button>
+          <button class="swatch"        data-bg="neonnight"  title="Neon Night"></button>
+          <button class="swatch"        data-bg="lavender"   title="Lavender"></button>
+          <button class="swatch"        data-bg="midnight"   title="Midnight"></button>
+          <button class="swatch"        data-bg="magenta"    title="Magenta"></button>
+          <button class="swatch"        data-bg="dusk"       title="Dusk"></button>
+          <button class="swatch"        data-bg="blush"      title="Blush"></button>
+          <button class="swatch"        data-bg="deepsea"    title="Deep Sea"></button>
+          <button class="swatch"        data-bg="slate"      title="Slate"></button>
           <button class="swatch swatch--checker" data-bg="none" title="None"></button>
+        </div>
+
+        <!-- Picked color indicator (shown when a canvas color has been sampled) -->
+        <div id="custom-color-row" class="custom-bg-row" style="display:none">
+          <span id="custom-color-circle" class="custom-color-circle"></span>
+          <span id="custom-color-hex" class="custom-color-hex">#ffffff</span>
+        </div>
+
+        <!-- Pick background color from screenshot -->
+        <button id="btn-bg-eyedropper" class="bg-action-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22l10-10"/><path d="M3.5 12.5 16 20l5-5-7.5-12.5L3.5 12.5z"/></svg>
+          Pick from screenshot
+        </button>
+
+        <!-- Custom image background -->
+        <button id="btn-bg-image" class="bg-action-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Image background
+        </button>
+        <input type="file" id="bg-image-input" accept="image/*" style="display:none" />
+        <div id="bg-image-preview" class="bg-image-preview" style="display:none">
+          <img id="bg-image-thumb" alt="" />
+          <button id="btn-remove-bg-image" class="btn-remove-bg-img" title="Remove">✕</button>
         </div>
 
         <div class="ctrl-row ctrl-row--solo">

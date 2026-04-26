@@ -3,16 +3,16 @@
 /* ── Constants ────────────────────────────────────────────── */
 
 const BG_PRESETS = {
-  ember:   ['#f97316', '#ef4444', '#ec4899'],
-  ocean:   ['#06b6d4', '#3b82f6', '#8b5cf6'],
-  aurora:  ['#10b981', '#06b6d4', '#6366f1'],
-  sunset:  ['#f59e0b', '#ef4444', '#7c3aed'],
-  mint:    ['#a7f3d0', '#67e8f9', '#c4b5fd'],
-  slate:   ['#334155', '#1e293b', '#0f172a'],
-  rose:    ['#fda4af', '#f472b6', '#c084fc'],
-  night:   ['#1e1b4b', '#312e81', '#4c1d95'],
-  peach:   ['#fed7aa', '#fecaca', '#e9d5ff'],
-  none:    null,
+  flink:    ['#E2186F', '#FF7EB3', '#CCC5E0'],
+  neonnight:['#1A2B5C', '#E2186F', '#FF7EB3'],
+  lavender: ['#CCC5E0', '#E8E3F0', '#FFFFFF'],
+  midnight: ['#1A2B5C', '#2A3E7A', '#3D5299'],
+  magenta:  ['#E2186F', '#C4145F', '#8B0E43'],
+  dusk:     ['#CCC5E0', '#1A2B5C'],
+  blush:    ['#FF7EB3', '#FF5A99', '#E2186F'],
+  deepsea:  ['#0A0A2E', '#1A2B5C', '#CCC5E0'],
+  slate:    ['#2D3436', '#636E72', '#B2BEC3'],
+  none:     null,
 };
 
 const RATIOS = {
@@ -30,20 +30,22 @@ const BUILTIN_PRESETS = [
 /* ── State ────────────────────────────────────────────────── */
 
 const S = {
-  img:         null,
-  padding:     48,
-  radius:      12,
-  shadow:      40,
-  bg:          'ember',
-  ratio:       'auto',
-  inset:       0,
-  insetColor:  '#ffffff',
-  tool:        'pointer',
-  color:       '#f97316',
-  lw:          3,
-  annotations: [],
-  undone:      [],
-  current:     null,
+  img:           null,
+  padding:       48,
+  radius:        12,
+  shadow:        40,
+  bg:            'flink',
+  bgCustomColor: '#ffffff',   // used when bg === 'custom-color'
+  bgCustomImage: null,        // HTMLImageElement, used when bg === 'custom-image'
+  ratio:         'auto',
+  inset:         0,
+  insetColor:    '#ffffff',
+  tool:          'pointer',
+  color:         '#f97316',
+  lw:            3,
+  annotations:   [],
+  undone:        [],
+  current:       null,
 };
 
 // Set by render(); used by zoom lens to map canvas→image coordinates.
@@ -52,8 +54,9 @@ let lastDims = null;
 // User-created presets synced from chrome.storage.sync.
 let userPresets = [];
 
-// Whether the eyedropper (pick-from-canvas) mode is active.
-let eyedropperActive = false;
+// Eyedropper mode flags: inset-color picker and bg color picker.
+let eyedropperActive   = false;
+let bgEyedropperActive = false;
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 
@@ -100,24 +103,34 @@ function computeDimensions() {
 }
 
 function drawBaseLayer(c, w, h, img, imgX, imgY) {
-  const { radius, shadow, bg, insetColor } = S;
-  const stops = BG_PRESETS[bg];
+  const { radius, shadow, bg, bgCustomColor, bgCustomImage, insetColor } = S;
 
   // Background
-  if (stops) {
-    const grad = c.createLinearGradient(0, 0, w, h);
-    stops.forEach((col, i) => grad.addColorStop(i / (stops.length - 1), col));
-    c.fillStyle = grad;
+  if (bg === 'custom-color') {
+    c.fillStyle = bgCustomColor;
     c.fillRect(0, 0, w, h);
+  } else if (bg === 'custom-image' && bgCustomImage) {
+    const scale = Math.max(w / bgCustomImage.naturalWidth, h / bgCustomImage.naturalHeight);
+    const sw    = bgCustomImage.naturalWidth  * scale;
+    const sh    = bgCustomImage.naturalHeight * scale;
+    c.drawImage(bgCustomImage, (w - sw) / 2, (h - sh) / 2, sw, sh);
   } else {
-    // Checkerboard
-    c.fillStyle = '#fff';
-    c.fillRect(0, 0, w, h);
-    c.fillStyle = '#e5e7eb';
-    const sq = 16;
-    for (let gy = 0; gy < h; gy += sq) {
-      for (let gx = 0; gx < w; gx += sq) {
-        if (((gx / sq) + (gy / sq)) % 2 === 0) c.fillRect(gx, gy, sq, sq);
+    const stops = BG_PRESETS[bg];
+    if (stops) {
+      const grad = c.createLinearGradient(0, 0, w, h);
+      stops.forEach((col, i) => grad.addColorStop(i / (stops.length - 1), col));
+      c.fillStyle = grad;
+      c.fillRect(0, 0, w, h);
+    } else {
+      // Checkerboard (bg === 'none')
+      c.fillStyle = '#fff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#e5e7eb';
+      const sq = 16;
+      for (let gy = 0; gy < h; gy += sq) {
+        for (let gx = 0; gx < w; gx += sq) {
+          if (((gx / sq) + (gy / sq)) % 2 === 0) c.fillRect(gx, gy, sq, sq);
+        }
       }
     }
   }
@@ -331,6 +344,19 @@ let mouseDown = false;
 canvas.addEventListener('mousedown', (e) => {
   if (!S.img || e.button !== 0) return;
 
+  if (bgEyedropperActive) {
+    const { x, y } = getCoords(e);
+    const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+    S.bgCustomColor = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    S.bg = 'custom-color';
+    bgEyedropperActive = false;
+    document.getElementById('btn-bg-eyedropper').classList.remove('active');
+    updateUI();
+    updateBgSwatch();
+    render();
+    return;
+  }
+
   if (eyedropperActive) {
     const { x, y } = getCoords(e);
     const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
@@ -493,6 +519,7 @@ function updateUI() {
 
   if (has) {
     canvas.style.cursor =
+      bgEyedropperActive   ? 'crosshair' :
       eyedropperActive     ? 'crosshair' :
       S.tool === 'pointer' ? 'default'   :
       S.tool === 'text'    ? 'text'      : 'crosshair';
@@ -578,14 +605,77 @@ document.getElementById('btn-eyedropper').addEventListener('click', () => {
   updateUI();
 });
 
+/* ── Background helpers ───────────────────────────────────── */
+
+function updateBgSwatch() {
+  const isCustom = S.bg === 'custom-color' || S.bg === 'custom-image';
+
+  document.querySelectorAll('.swatch').forEach(b =>
+    b.classList.toggle('active', !isCustom && b.dataset.bg === S.bg)
+  );
+
+  const colorRow = document.getElementById('custom-color-row');
+  if (S.bg === 'custom-color' && S.bgCustomColor) {
+    colorRow.style.display = 'flex';
+    document.getElementById('custom-color-circle').style.background = S.bgCustomColor;
+    document.getElementById('custom-color-hex').textContent = S.bgCustomColor;
+  } else {
+    colorRow.style.display = 'none';
+  }
+
+  document.getElementById('bg-image-preview').style.display =
+    (S.bg === 'custom-image' && S.bgCustomImage) ? 'block' : 'none';
+}
+
 // Background swatches
 document.querySelectorAll('.swatch').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.swatch').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     S.bg = btn.dataset.bg;
+    updateBgSwatch();
     render();
   });
+});
+
+// Pick bg color from canvas (eyedropper)
+document.getElementById('btn-bg-eyedropper').addEventListener('click', () => {
+  bgEyedropperActive = !bgEyedropperActive;
+  document.getElementById('btn-bg-eyedropper').classList.toggle('active', bgEyedropperActive);
+  if (bgEyedropperActive) {
+    eyedropperActive = false;
+    document.getElementById('btn-eyedropper').classList.remove('active');
+  }
+  updateUI();
+});
+
+// Image background upload
+document.getElementById('btn-bg-image').addEventListener('click', () => {
+  document.getElementById('bg-image-input').click();
+});
+
+document.getElementById('bg-image-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      S.bgCustomImage = img;
+      S.bg = 'custom-image';
+      document.getElementById('bg-image-thumb').src = ev.target.result;
+      updateBgSwatch();
+      render();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+
+document.getElementById('btn-remove-bg-image').addEventListener('click', () => {
+  S.bgCustomImage = null;
+  S.bg = 'flink';
+  updateBgSwatch();
+  render();
 });
 
 // Ratio pills (both rows share data-ratio)
@@ -629,14 +719,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 /* ── Preset management ────────────────────────────────────── */
 
-function applySettings({ padding, radius, shadow, bg, ratio, inset = 0, insetColor = '#ffffff' }) {
-  S.padding    = padding;
-  S.radius     = radius;
-  S.shadow     = shadow;
-  S.bg         = bg;
-  S.ratio      = ratio;
-  S.inset      = inset;
-  S.insetColor = insetColor;
+function applySettings({ padding, radius, shadow, bg, bgCustomColor = '#ffffff', ratio, inset = 0, insetColor = '#ffffff' }) {
+  S.padding       = padding;
+  S.radius        = radius;
+  S.shadow        = shadow;
+  S.bg            = bg;
+  S.bgCustomColor = bgCustomColor;
+  S.ratio         = ratio;
+  S.inset         = inset;
+  S.insetColor    = insetColor;
 
   // Sync slider positions and displayed values
   document.getElementById('sl-padding').value        = padding;
@@ -649,10 +740,8 @@ function applySettings({ padding, radius, shadow, bg, ratio, inset = 0, insetCol
   document.getElementById('val-inset').textContent    = inset + 'px';
   document.getElementById('inset-color-picker').value = insetColor;
 
-  // Sync active swatch
-  document.querySelectorAll('.swatch').forEach(b =>
-    b.classList.toggle('active', b.dataset.bg === bg)
-  );
+  // Sync active swatch and custom bg indicator
+  updateBgSwatch();
 
   // Sync active ratio pill
   document.querySelectorAll('.pill').forEach(b =>
@@ -716,13 +805,14 @@ document.getElementById('btn-save-preset').addEventListener('click', () => {
 
   const settings = {
     name,
-    padding:    S.padding,
-    radius:     S.radius,
-    shadow:     S.shadow,
-    bg:         S.bg,
-    ratio:      S.ratio,
-    inset:      S.inset,
-    insetColor: S.insetColor,
+    padding:       S.padding,
+    radius:        S.radius,
+    shadow:        S.shadow,
+    bg:            S.bg === 'custom-image' ? 'flink' : S.bg,
+    bgCustomColor: S.bgCustomColor,
+    ratio:         S.ratio,
+    inset:         S.inset,
+    insetColor:    S.insetColor,
   };
 
   // Overwrite if name already exists, otherwise append.

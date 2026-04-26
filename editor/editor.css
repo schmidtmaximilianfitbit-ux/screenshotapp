@@ -290,16 +290,96 @@ html, body {
   background-size: 12px 12px;
 }
 
-/* Swatch preset gradients */
-.swatch[data-bg="ember"]   { background: linear-gradient(135deg,#f97316,#ef4444,#ec4899); }
-.swatch[data-bg="ocean"]   { background: linear-gradient(135deg,#06b6d4,#3b82f6,#8b5cf6); }
-.swatch[data-bg="aurora"]  { background: linear-gradient(135deg,#10b981,#06b6d4,#6366f1); }
-.swatch[data-bg="sunset"]  { background: linear-gradient(135deg,#f59e0b,#ef4444,#7c3aed); }
-.swatch[data-bg="mint"]    { background: linear-gradient(135deg,#a7f3d0,#67e8f9,#c4b5fd); }
-.swatch[data-bg="slate"]   { background: linear-gradient(135deg,#334155,#1e293b,#0f172a); }
-.swatch[data-bg="rose"]    { background: linear-gradient(135deg,#fda4af,#f472b6,#c084fc); }
-.swatch[data-bg="night"]   { background: linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95); }
-.swatch[data-bg="peach"]   { background: linear-gradient(135deg,#fed7aa,#fecaca,#e9d5ff); }
+/* Swatch preset gradients — Flink brand palette */
+.swatch[data-bg="flink"]     { background: linear-gradient(135deg, #E2186F 0%, #FF7EB3 50%, #CCC5E0 100%); }
+.swatch[data-bg="neonnight"]  { background: linear-gradient(135deg, #1A2B5C 0%, #E2186F 50%, #FF7EB3 100%); }
+.swatch[data-bg="lavender"]   { background: linear-gradient(135deg, #CCC5E0 0%, #E8E3F0 50%, #ffffff 100%); }
+.swatch[data-bg="midnight"]   { background: linear-gradient(135deg, #1A2B5C 0%, #2A3E7A 50%, #3D5299 100%); }
+.swatch[data-bg="magenta"]    { background: linear-gradient(135deg, #E2186F 0%, #C4145F 50%, #8B0E43 100%); }
+.swatch[data-bg="dusk"]       { background: linear-gradient(135deg, #CCC5E0 0%, #1A2B5C 100%); }
+.swatch[data-bg="blush"]      { background: linear-gradient(135deg, #FF7EB3 0%, #FF5A99 50%, #E2186F 100%); }
+.swatch[data-bg="deepsea"]    { background: linear-gradient(135deg, #0A0A2E 0%, #1A2B5C 50%, #CCC5E0 100%); }
+.swatch[data-bg="slate"]      { background: linear-gradient(135deg, #2D3436 0%, #636E72 50%, #B2BEC3 100%); }
+
+/* Background action buttons (eyedropper + image bg) */
+.bg-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #151c28;
+  color: #94a3b8;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.bg-action-btn:hover { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+.bg-action-btn.active { border-color: #f97316; color: #f97316; background: rgba(249,115,22,0.06); }
+
+/* Custom picked color indicator */
+.custom-bg-row {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.custom-color-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #f97316;
+  flex-shrink: 0;
+  display: block;
+}
+
+.custom-color-hex {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* Image background preview thumbnail */
+.bg-image-preview {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.bg-image-preview img {
+  display: block;
+  width: 100%;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #f97316;
+}
+
+.btn-remove-bg-img {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.65);
+  border: none;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove-bg-img:hover { background: #ef4444; }
 
 /* Ratio pills */
 .pill-group {
