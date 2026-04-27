@@ -4,7 +4,7 @@
 html, body {
   height: 100%;
   overflow: hidden;
-  background: #080E24;
+  background: #CCC5E0;
   color: #FFFFFF;
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
@@ -24,10 +24,7 @@ html, body {
   min-width: 0;
   display: flex;
   overflow: auto;
-  background: #080E24;
-  background-image:
-    radial-gradient(ellipse at 30% 50%, rgba(26,43,92,0.6) 0%, transparent 60%),
-    radial-gradient(ellipse at 75% 20%, rgba(226,24,111,0.06) 0%, transparent 50%);
+  background: #CCC5E0;
 }
 
 #canvas-wrap {
@@ -57,9 +54,9 @@ html, body {
   width: 420px;
   max-width: calc(100vw - 288px - 40px);
   aspect-ratio: 16/10;
-  border: 2px dashed #1E3268;
+  border: 2px dashed #3D5299;
   border-radius: 14px;
-  color: #4A5A8A;
+  color: #1A2B5C;
   text-align: center;
   transition: border-color 0.15s, background 0.15s;
   cursor: default;
@@ -67,7 +64,7 @@ html, body {
 
 #drop-zone.drag-over {
   border-color: #E2186F;
-  background: rgba(226,24,111,0.04);
+  background: rgba(226,24,111,0.06);
 }
 
 .dz-icon { font-size: 32px; }
@@ -75,13 +72,13 @@ html, body {
 .dz-title {
   font-size: 14px;
   font-weight: 600;
-  color: #5A6895;
+  color: #1A2B5C;
   margin-top: 2px;
 }
 
 .dz-sub {
   font-size: 12px;
-  color: #2A3A6A;
+  color: #3D5299;
 }
 
 .dz-browse {
@@ -133,7 +130,7 @@ html, body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #111C44;
+  background: #0E0E25;
   border-left: 1px solid #1E3268;
   overflow: hidden;
 }
@@ -162,7 +159,7 @@ html, body {
   gap: 3px;
   padding: 3px;
   margin: 10px 14px 0;
-  background: #0A1228;
+  background: #07091A;
   border-radius: 9px;
   flex-shrink: 0;
 }
@@ -208,6 +205,13 @@ html, body {
 /* ── Section divider ─────────────────────────────────────── */
 .section-gap { margin-top: 14px; }
 
+.section-sep {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 18px 0 14px;
+  border: none;
+}
+
 /* Control row labels */
 .ctrl-row {
   display: flex;
@@ -252,7 +256,7 @@ html, body {
   height: 13px;
   border-radius: 50%;
   background: #E2186F;
-  border: 2px solid #111C44;
+  border: 2px solid #0E0E25;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(226,24,111,0.4);
   transition: transform 0.1s;
@@ -265,7 +269,7 @@ html, body {
   height: 13px;
   border-radius: 50%;
   background: #E2186F;
-  border: 2px solid #111C44;
+  border: 2px solid #0E0E25;
   cursor: pointer;
 }
 
@@ -309,6 +313,7 @@ html, body {
 .bg-action-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   width: 100%;
   padding: 7px 10px;
@@ -321,7 +326,7 @@ html, body {
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
-  text-align: left;
+  text-align: center;
   margin-bottom: 5px;
 }
 

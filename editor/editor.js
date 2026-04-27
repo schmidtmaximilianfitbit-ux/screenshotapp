@@ -52,10 +52,10 @@ const S = {
   lw:               3,
   // annotation-tool sub-options
   textFont:         'sans',
+  textStyle:        'normal',
   highlightRounded: false,
   zoomShape:        'circle',
   zoomLevel:        2.5,
-  zoomLabel:        '',
   annotations:      [],
   undone:           [],
   current:          null,
@@ -266,10 +266,21 @@ function drawAnnotation(c, a, canvasW, canvasH) {
     }
 
     case 'text': {
-      const fontSize = Math.max(16, a.lw * 8);
-      c.font = `${fontSize}px ${FONT_MAP[a.font] || FONT_MAP.sans}`;
+      const fontSize  = Math.max(16, a.lw * 8);
+      const tstyle    = a.textStyle || 'normal';
+      const isBold    = tstyle === 'bold';
+      const isItalic  = tstyle === 'italic';
+      const parts     = [];
+      if (isItalic) parts.push('italic');
+      if (isBold)   parts.push('bold');
+      parts.push(`${fontSize}px`, FONT_MAP[a.font] || FONT_MAP.sans);
+      c.font         = parts.join(' ');
       c.textBaseline = 'top';
       c.fillText(a.text, a.x, a.y);
+      if (tstyle === 'underline') {
+        const tw = c.measureText(a.text).width;
+        c.fillRect(a.x, a.y + fontSize + 2, tw, Math.max(1, Math.round(fontSize * 0.07)));
+      }
       break;
     }
 
@@ -308,29 +319,38 @@ function drawArrow(c, x1, y1, x2, y2, lw) {
 function drawZoomLens(c, a, canvasW, canvasH) {
   if (!S.img || !lastDims) return;
 
-  const lx   = Math.min(a.x, a.x + a.w);
-  const ly   = Math.min(a.y, a.y + a.h);
-  const lw   = Math.max(Math.abs(a.w), 10);
-  const lh   = Math.max(Math.abs(a.h), 10);
-  const zoom = a.zoom || 2.5;
+  // The drawn rect defines the SOURCE area on the screenshot to magnify.
+  const sx    = Math.min(a.x, a.x + a.w);
+  const sy    = Math.min(a.y, a.y + a.h);
+  const sw    = Math.max(Math.abs(a.w), 10);
+  const sh    = Math.max(Math.abs(a.h), 10);
+  const zoom  = a.zoom || 2.5;
   const shape = a.shape || 'circle';
+  const scx   = sx + sw / 2;
+  const scy   = sy + sh / 2;
 
-  // Source region: the area of the base image the lens magnifies.
-  // It is centered at the lens center, zoom-times smaller than the lens.
-  const cx   = lx + lw / 2;
-  const cy   = ly + lh / 2;
-  const srcW = lw / zoom;
-  const srcH = lh / zoom;
+  // Output lens = source × zoom factor.
+  const lw = sw * zoom;
+  const lh = sh * zoom;
 
-  const osc  = new OffscreenCanvas(canvasW, canvasH);
-  const octx = osc.getContext('2d');
-  drawBaseLayer(octx, canvasW, canvasH, S.img, lastDims.imgX, lastDims.imgY);
+  // Position lens above the source; fall back to below if near the top edge.
+  const GAP = 16;
+  let lx = scx - lw / 2;
+  let ly = sy - lh - GAP;
+  if (ly < 0) ly = sy + sh + GAP;
+  // Clamp to canvas bounds.
+  lx = Math.max(0, Math.min(lx, canvasW - lw));
+  ly = Math.max(0, Math.min(ly, canvasH - lh));
+  const lcx = lx + lw / 2;
+  const lcy = ly + lh / 2;
 
-  function shapePath(ctx) {
+  const osc = new OffscreenCanvas(canvasW, canvasH);
+  drawBaseLayer(osc.getContext('2d'), canvasW, canvasH, S.img, lastDims.imgX, lastDims.imgY);
+
+  function lensPath(ctx) {
     ctx.beginPath();
     if (shape === 'circle') {
-      const r = Math.min(lw, lh) / 2;
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(lcx, lcy, Math.min(lw, lh) / 2, 0, Math.PI * 2);
     } else if (shape === 'rect') {
       ctx.rect(lx, ly, lw, lh);
     } else {
@@ -338,33 +358,51 @@ function drawZoomLens(c, a, canvasW, canvasH) {
     }
   }
 
-  // Clip to shape, draw magnified source into lens area.
+  // Clip to lens shape; draw full source rect into lens (= zoom× magnification of entire source).
   c.save();
-  shapePath(c);
+  lensPath(c);
   c.clip();
-  c.drawImage(osc, cx - srcW / 2, cy - srcH / 2, srcW, srcH, lx, ly, lw, lh);
+  c.drawImage(osc, sx, sy, sw, sh, lx, ly, lw, lh);
   c.restore();
 
-  // Border
+  // Lens border.
   c.save();
   c.strokeStyle = a.color;
   c.lineWidth   = 2.5;
-  shapePath(c);
+  lensPath(c);
   c.stroke();
   c.restore();
 
-  // Label overlaid inside top-right of lens area.
-  if (a.label) {
-    c.save();
-    c.font         = 'bold 11px Montserrat, sans-serif';
-    c.fillStyle    = a.color;
-    c.textAlign    = 'right';
-    c.textBaseline = 'top';
-    c.shadowColor  = 'rgba(0,0,0,0.7)';
-    c.shadowBlur   = 4;
-    c.fillText(a.label, lx + lw - 6, ly + 6);
-    c.restore();
+  // Dashed source-area indicator.
+  c.save();
+  c.strokeStyle = a.color;
+  c.lineWidth   = 1.5;
+  c.setLineDash([3, 2]);
+  if (shape === 'circle') {
+    c.beginPath();
+    c.arc(scx, scy, Math.min(sw, sh) / 2, 0, Math.PI * 2);
+    c.stroke();
+  } else {
+    c.strokeRect(sx, sy, sw, sh);
   }
+  c.setLineDash([]);
+  c.restore();
+
+  // Leader line from source to lens.
+  c.save();
+  c.strokeStyle = a.color;
+  c.lineWidth   = 1;
+  c.globalAlpha = 0.5;
+  c.beginPath();
+  if (lcy < scy) {
+    c.moveTo(scx, sy);
+    c.lineTo(lcx, ly + lh);
+  } else {
+    c.moveTo(scx, sy + sh);
+    c.lineTo(lcx, ly);
+  }
+  c.stroke();
+  c.restore();
 }
 
 function render() {
@@ -508,7 +546,7 @@ function drawSelectionOverlay(c) {
   const bx = bb.x - PAD, by = bb.y - PAD, bw = bb.w + PAD * 2, bh = bb.h + PAD * 2;
 
   c.save();
-  c.strokeStyle = '#E2186F';
+  c.strokeStyle = '#3D5299';
   c.lineWidth   = 1.5;
   c.setLineDash([4, 3]);
   c.strokeRect(bx, by, bw, bh);
@@ -524,7 +562,7 @@ function drawSelectionOverlay(c) {
   }
 
   c.fillStyle   = '#FFFFFF';
-  c.strokeStyle = '#E2186F';
+  c.strokeStyle = '#3D5299';
   c.lineWidth   = 1.5;
   handles.forEach(([hx, hy]) => {
     c.fillRect(hx - H / 2, hy - H / 2, H, H);
@@ -554,17 +592,13 @@ function positionSelectionToolbar() {
   const bb = getAnnotationBBox(a);
   if (!bb) { tb.style.display = 'none'; return; }
 
-  const PAD   = 6;
-  const pt    = canvasToScreen(bb.x - PAD, bb.y - PAD);
-  const tbH   = 36;
-
-  let sx = pt.x;
-  let sy = pt.y - tbH - 6;
-  if (sy < 4) sy = pt.y + 4;
+  const PAD = 6;
+  // Position the ✕ button at the top-right corner of the dashed selection box.
+  const pt  = canvasToScreen(bb.x + bb.w + PAD, bb.y - PAD);
 
   tb.style.display = 'flex';
-  tb.style.left    = `${Math.round(sx)}px`;
-  tb.style.top     = `${Math.round(sy)}px`;
+  tb.style.left    = `${Math.round(pt.x) + 2}px`;
+  tb.style.top     = `${Math.round(pt.y) - 2}px`;
 }
 
 function syncSidebarToSelection() {
@@ -614,6 +648,9 @@ function syncSidebarToSelection() {
     const font = a.font || 'sans';
     document.querySelectorAll('[data-font]').forEach(b => b.classList.toggle('active', b.dataset.font === font));
     S.textFont = font;
+    const tstyle = a.textStyle || 'normal';
+    document.querySelectorAll('[data-tstyle]').forEach(b => b.classList.toggle('active', b.dataset.tstyle === tstyle));
+    S.textStyle = tstyle;
   }
 
   if (a.type === 'zoom') {
@@ -624,9 +661,6 @@ function syncSidebarToSelection() {
     S.zoomLevel = zl;
     document.getElementById('sl-zoom-level').value = Math.round(zl * 10);
     document.getElementById('val-zoom-level').textContent = zl.toFixed(1) + '×';
-    const lbl = a.label || '';
-    document.getElementById('zoom-label-input').value = lbl;
-    S.zoomLabel = lbl;
   }
 }
 
@@ -721,13 +755,34 @@ canvas.addEventListener('mousedown', (e) => {
     case 'rect-r':    S.current = { ...base, type: 'rect-r',    x, y, w: 0, h: 0 };             break;
     case 'ellipse':   S.current = { ...base, type: 'ellipse',   x, y, w: 0, h: 0 };             break;
     case 'highlight': S.current = { ...base, type: 'highlight', x, y, w: 0, h: 0, rounded: S.highlightRounded }; break;
-    case 'zoom':      S.current = { ...base, type: 'zoom',      x, y, w: 0, h: 0, zoom: S.zoomLevel, shape: S.zoomShape, label: S.zoomLabel }; break;
+    case 'zoom':      S.current = { ...base, type: 'zoom',      x, y, w: 0, h: 0, zoom: S.zoomLevel, shape: S.zoomShape }; break;
   }
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!mouseDown) return;
   const { x, y } = getCoords(e);
+
+  // Hover cursor when not drawing/dragging.
+  if (!mouseDown && S.img) {
+    if (bgEyedropperActive || annColorEyedropperActive || eyedropperActive) {
+      canvas.style.cursor = 'crosshair';
+    } else {
+      const handle = getHandleAt(x, y);
+      if (handle) {
+        const RES = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', p1: 'move', p2: 'move' };
+        canvas.style.cursor = RES[handle] || 'pointer';
+      } else if (hitTestAnnotations(x, y) >= 0) {
+        canvas.style.cursor = 'grab';
+      } else {
+        canvas.style.cursor = S.tool === 'text' ? 'text' : 'crosshair';
+      }
+    }
+  }
+
+  if (!mouseDown) return;
+
+  // Grabbing cursor while dragging a selection.
+  if (selDrag) canvas.style.cursor = 'grabbing';
 
   // Selection drag (move or resize).
   if (selDrag && selectedIndex >= 0 && selectedIndex < S.annotations.length) {
@@ -793,20 +848,29 @@ function spawnTextInput(clientX, clientY, canvasX, canvasY) {
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.placeholder = 'Type here…';
+  const fontSize  = Math.max(16, S.lw * 8);
+  const isBold    = S.textStyle === 'bold';
+  const isItalic  = S.textStyle === 'italic';
   Object.assign(inp.style, {
-    position: 'fixed',
-    left: `${Math.min(clientX, window.innerWidth - 180)}px`,
-    top:  `${Math.min(clientY, window.innerHeight - 48)}px`,
-    zIndex: '99999',
-    background: 'rgba(12,16,24,0.92)',
-    border: '2px solid #E2186F',
-    color: '#fff',
-    padding: '5px 10px',
-    borderRadius: '6px',
-    font: `14px ${FONT_MAP[S.textFont] || FONT_MAP.sans}`,
-    minWidth: '140px',
-    outline: 'none',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+    position:       'fixed',
+    left:           `${Math.min(clientX, window.innerWidth - 180)}px`,
+    top:            `${Math.min(clientY, window.innerHeight - 48)}px`,
+    zIndex:         '99999',
+    background:     'transparent',
+    border:         'none',
+    borderBottom:   `2px solid ${S.color}`,
+    color:          S.color,
+    padding:        '3px 2px',
+    borderRadius:   '0',
+    fontFamily:     FONT_MAP[S.textFont] || FONT_MAP.sans,
+    fontSize:       `${fontSize}px`,
+    fontWeight:     isBold ? 'bold' : 'normal',
+    fontStyle:      isItalic ? 'italic' : 'normal',
+    textDecoration: S.textStyle === 'underline' ? 'underline' : 'none',
+    minWidth:       '120px',
+    outline:        'none',
+    boxShadow:      'none',
+    caretColor:     S.color,
   });
   document.body.appendChild(inp);
 
@@ -823,7 +887,7 @@ function spawnTextInput(clientX, clientY, canvasX, canvasY) {
     if (!text) return;
     S.annotations.push({
       type: 'text', color: S.color, lw: S.lw, font: S.textFont,
-      text, x: canvasX, y: canvasY,
+      textStyle: S.textStyle, text, x: canvasX, y: canvasY,
     });
     S.undone = [];
     render();
@@ -921,9 +985,9 @@ function updateUI() {
   document.getElementById('btn-clear-image').hidden = !has;
 
   if (has) {
-    canvas.style.cursor =
-      bgEyedropperActive || annColorEyedropperActive || eyedropperActive ? 'crosshair' :
-      S.tool === 'text' ? 'text' : 'crosshair';
+    if (bgEyedropperActive || annColorEyedropperActive || eyedropperActive) {
+      canvas.style.cursor = 'crosshair';
+    }
   }
 
   btnCopy.disabled   = !has;
@@ -1109,6 +1173,8 @@ function updateToolOptions() {
     const el = document.getElementById(`opt-${t}`);
     if (el) el.style.display = S.tool === t ? 'flex' : 'none';
   });
+  const textStyleEl = document.getElementById('opt-text-style');
+  if (textStyleEl) textStyleEl.style.display = S.tool === 'text' ? 'flex' : 'none';
 }
 
 // ── Highlight style toggle ────────────────────────────────────
@@ -1139,6 +1205,20 @@ document.querySelectorAll('[data-font]').forEach(btn => {
   });
 });
 
+// ── Text style selector (Normal / Bold / Italic / Underline) ──
+document.querySelectorAll('[data-tstyle]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-tstyle]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    S.textStyle = btn.dataset.tstyle;
+    if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+        S.annotations[selectedIndex].type === 'text') {
+      S.annotations[selectedIndex].textStyle = S.textStyle;
+      render();
+    }
+  });
+});
+
 // ── Zoom shape + label ────────────────────────────────────────
 document.querySelectorAll('[data-zshape]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1151,15 +1231,6 @@ document.querySelectorAll('[data-zshape]').forEach(btn => {
       render();
     }
   });
-});
-
-document.getElementById('zoom-label-input').addEventListener('input', function () {
-  S.zoomLabel = this.value;
-  if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
-      S.annotations[selectedIndex].type === 'zoom') {
-    S.annotations[selectedIndex].label = S.zoomLabel;
-    render();
-  }
 });
 
 document.getElementById('sl-zoom-level').addEventListener('input', function () {

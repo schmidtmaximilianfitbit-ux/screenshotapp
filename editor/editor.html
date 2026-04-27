@@ -80,6 +80,8 @@
           <button id="btn-eyedropper" class="btn-color-action">Pick</button>
         </div>
 
+        <div class="section-sep"></div>
+
         <div class="ctrl-row ctrl-row--solo">
           <span class="ctrl-label">Background</span>
         </div>
@@ -118,6 +120,8 @@
           <img id="bg-image-thumb" alt="" />
           <button id="btn-remove-bg-image" class="btn-remove-bg-img" title="Remove">✕</button>
         </div>
+
+        <div class="section-sep"></div>
 
         <div class="ctrl-row ctrl-row--solo">
           <span class="ctrl-label">Ratio</span>
@@ -187,7 +191,12 @@
           <button class="tool-opt-pill active" data-font="sans">Sans</button>
           <button class="tool-opt-pill" data-font="serif">Serif</button>
           <button class="tool-opt-pill" data-font="comic">Comic</button>
-          <button class="tool-opt-pill" data-font="code">Code</button>
+        </div>
+        <div id="opt-text-style" class="tool-opts" style="display:none">
+          <button class="tool-opt-pill active" data-tstyle="normal">Normal</button>
+          <button class="tool-opt-pill" data-tstyle="bold">Bold</button>
+          <button class="tool-opt-pill" data-tstyle="italic">Italic</button>
+          <button class="tool-opt-pill" data-tstyle="underline">Underline</button>
         </div>
 
         <div id="opt-zoom" class="tool-opts tool-opts--col" style="display:none">
@@ -201,11 +210,12 @@
             <span class="ctrl-value" id="val-zoom-level" style="font-size:10px">2.5×</span>
           </div>
           <input type="range" id="sl-zoom-level" class="slider" min="15" max="50" value="25" step="5" />
-          <input type="text" id="zoom-label-input" class="zoom-label-input" placeholder="Label…" maxlength="32" />
         </div>
 
         <!-- Annotation color -->
-        <div class="ctrl-row ctrl-row--solo" style="margin-top:6px">
+        <div class="section-sep"></div>
+
+        <div class="ctrl-row ctrl-row--solo">
           <span class="ctrl-label">Color</span>
         </div>
         <div class="color-row">
@@ -222,12 +232,14 @@
         </div>
         <input type="color" id="ann-color-picker" value="#1A2B5C"
                style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none" />
-        <button class="bg-action-btn" id="btn-ann-color-eyedropper" style="margin-top:4px;margin-bottom:8px">
+        <button class="bg-action-btn" id="btn-ann-color-eyedropper" style="margin-top:4px;margin-bottom:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22l10-10"/><path d="M3.5 12.5 16 20l5-5-7.5-12.5L3.5 12.5z"/></svg>
           Pick from canvas
         </button>
 
         <!-- Line width -->
+        <div class="section-sep"></div>
+
         <div class="ctrl-row">
           <span class="ctrl-label">Line Width</span>
           <span class="ctrl-value" id="val-lw">3px</span>
@@ -235,6 +247,8 @@
         <input type="range" id="sl-lw" class="slider" min="1" max="12" value="3" />
 
         <!-- Actions -->
+        <div class="section-sep"></div>
+
         <div class="action-row">
           <button class="action-btn" id="btn-undo" disabled>↩ Undo</button>
           <button class="action-btn" id="btn-redo" disabled>↪ Redo</button>
