@@ -726,3 +726,74 @@ html, body {
 }
 
 .preset-chip__delete:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+/* ── Annotation tool option panels ──────────────────────── */
+.tool-grid--3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.tool-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 8px;
+}
+
+.tool-opts--col {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-opts-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.tool-opt-pill {
+  padding: 4px 10px;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  background: #0a0e15;
+  color: #64748b;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tool-opt-pill:hover:not(.active) { background: #151c28; color: #94a3b8; }
+.tool-opt-pill.active { background: #f97316; border-color: transparent; color: #0f172a; font-weight: 600; }
+
+.zoom-label-input {
+  width: 100%;
+  background: #0a0e15;
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  padding: 5px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.zoom-label-input:focus { border-color: #f97316; }
+.zoom-label-input::placeholder { color: #334155; }
+
+/* Custom color "+" button in annotation color row */
+.color-dot--custom {
+  background: #151c28;
+  border: 1px dashed #334155;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.color-dot--custom:hover { background: #1e293b; border-color: #f97316; color: #f97316; }

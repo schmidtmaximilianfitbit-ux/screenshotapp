@@ -27,25 +27,37 @@ const BUILTIN_PRESETS = [
   { name: 'Clean', padding: 32, radius: 8, shadow: 20, bg: 'slate', ratio: 'auto', inset: 0, insetColor: '#ffffff' },
 ];
 
+const FONT_MAP = {
+  sans:  'Outfit, system-ui, sans-serif',
+  serif: 'Georgia, serif',
+  comic: '"Comic Sans MS", cursive',
+  code:  '"DM Mono", monospace',
+};
+
 /* ── State ────────────────────────────────────────────────── */
 
 const S = {
-  img:           null,
-  padding:       48,
-  radius:        12,
-  shadow:        40,
-  bg:            'flink',
-  bgCustomColor: '#ffffff',   // used when bg === 'custom-color'
-  bgCustomImage: null,        // HTMLImageElement, used when bg === 'custom-image'
-  ratio:         'auto',
-  inset:         0,
-  insetColor:    '#ffffff',
-  tool:          'pointer',
-  color:         '#f97316',
-  lw:            3,
-  annotations:   [],
-  undone:        [],
-  current:       null,
+  img:              null,
+  padding:          48,
+  radius:           12,
+  shadow:           40,
+  bg:               'flink',
+  bgCustomColor:    '#ffffff',
+  bgCustomImage:    null,
+  ratio:            'auto',
+  inset:            0,
+  insetColor:       '#ffffff',
+  tool:             'pointer',
+  color:            '#E2186F',
+  lw:               3,
+  // annotation-tool sub-options
+  textFont:         'sans',
+  highlightRounded: false,
+  zoomShape:        'circle',
+  zoomLabel:        '',
+  annotations:      [],
+  undone:           [],
+  current:          null,
 };
 
 // Set by render(); used by zoom lens to map canvas→image coordinates.
@@ -54,9 +66,10 @@ let lastDims = null;
 // User-created presets synced from chrome.storage.sync.
 let userPresets = [];
 
-// Eyedropper mode flags: inset-color picker and bg color picker.
-let eyedropperActive   = false;
-let bgEyedropperActive = false;
+// Eyedropper mode flags.
+let eyedropperActive         = false;
+let bgEyedropperActive       = false;
+let annColorEyedropperActive = false;
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 
@@ -209,6 +222,17 @@ function drawAnnotation(c, a, canvasW, canvasH) {
       c.strokeRect(a.x, a.y, a.w, a.h);
       break;
 
+    case 'rect-r': {
+      const rx = a.w >= 0 ? a.x : a.x + a.w;
+      const ry = a.h >= 0 ? a.y : a.y + a.h;
+      const rw = Math.abs(a.w);
+      const rh = Math.abs(a.h);
+      if (rw < 1 || rh < 1) break;
+      rrectPath(c, rx, ry, rw, rh, Math.min(12, rw / 3, rh / 3));
+      c.stroke();
+      break;
+    }
+
     case 'ellipse':
       if (a.w === 0 || a.h === 0) break;
       c.beginPath();
@@ -220,15 +244,26 @@ function drawAnnotation(c, a, canvasW, canvasH) {
       c.stroke();
       break;
 
-    case 'highlight':
-      c.globalAlpha = 0.32;
-      c.fillRect(a.x, a.y, a.w, a.h);
+    case 'highlight': {
+      const hx = a.w >= 0 ? a.x : a.x + a.w;
+      const hy = a.h >= 0 ? a.y : a.y + a.h;
+      const hw = Math.abs(a.w);
+      const hh = Math.abs(a.h);
+      c.globalAlpha = 0.35;
+      if (a.rounded && hw > 0 && hh > 0) {
+        rrectPath(c, hx, hy, hw, hh, Math.min(10, hw / 3, hh / 3));
+        c.fill();
+      } else {
+        c.fillRect(a.x, a.y, a.w, a.h);
+      }
       c.globalAlpha = 1;
       break;
+    }
 
     case 'text': {
       const fontSize = Math.max(16, a.lw * 8);
-      c.font = `${fontSize}px Outfit, sans-serif`;
+      c.font = `${fontSize}px ${FONT_MAP[a.font] || FONT_MAP.sans}`;
+      c.textBaseline = 'top';
       c.fillText(a.text, a.x, a.y);
       break;
     }
@@ -271,32 +306,45 @@ function drawZoomLens(c, a, canvasW, canvasH) {
   const LENS_R  = Math.max(40, a.lw * 10);
   const ZOOM    = 2.5;
   const srcSize = (LENS_R * 2) / ZOOM;
+  const shape   = a.shape || 'circle';
+  const lx = a.dx - LENS_R, ly = a.dy - LENS_R, ld = LENS_R * 2;
 
-  // Render just the base layer into an offscreen canvas to use as zoom source.
   const osc  = new OffscreenCanvas(canvasW, canvasH);
   const octx = osc.getContext('2d');
   drawBaseLayer(octx, canvasW, canvasH, S.img, lastDims.imgX, lastDims.imgY);
 
-  // Clip to circle and draw magnified region.
+  function shapePath(ctx) {
+    ctx.beginPath();
+    if (shape === 'circle')  ctx.arc(a.dx, a.dy, LENS_R, 0, Math.PI * 2);
+    else if (shape === 'rect') ctx.rect(lx, ly, ld, ld);
+    else                     rrectPath(ctx, lx, ly, ld, ld, 12);
+  }
+
+  // Clip to shape and draw magnified region.
   c.save();
-  c.beginPath();
-  c.arc(a.dx, a.dy, LENS_R, 0, Math.PI * 2);
+  shapePath(c);
   c.clip();
-  c.drawImage(
-    osc,
-    a.sx - srcSize / 2, a.sy - srcSize / 2, srcSize, srcSize,
-    a.dx - LENS_R,      a.dy - LENS_R,      LENS_R * 2, LENS_R * 2
-  );
+  c.drawImage(osc, a.sx - srcSize / 2, a.sy - srcSize / 2, srcSize, srcSize, lx, ly, ld, ld);
   c.restore();
 
-  // Border ring
+  // Border
   c.save();
   c.strokeStyle = a.color;
   c.lineWidth   = 3;
-  c.beginPath();
-  c.arc(a.dx, a.dy, LENS_R, 0, Math.PI * 2);
+  shapePath(c);
   c.stroke();
   c.restore();
+
+  // Optional label — top-right of the lens box
+  if (a.label) {
+    c.save();
+    c.font         = '11px "DM Mono", monospace';
+    c.fillStyle    = a.color;
+    c.textAlign    = 'right';
+    c.textBaseline = 'bottom';
+    c.fillText(a.label, lx + ld, ly - 4);
+    c.restore();
+  }
 }
 
 function render() {
@@ -344,31 +392,47 @@ let mouseDown = false;
 canvas.addEventListener('mousedown', (e) => {
   if (!S.img || e.button !== 0) return;
 
+  // ── Eyedropper modes ──────────────────────────────────────────
+  const sampleHex = (x, y) => {
+    const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+    return '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+  };
+
   if (bgEyedropperActive) {
     const { x, y } = getCoords(e);
-    const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    S.bgCustomColor = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    S.bgCustomColor = sampleHex(x, y);
     S.bg = 'custom-color';
     bgEyedropperActive = false;
     document.getElementById('btn-bg-eyedropper').classList.remove('active');
+    updateUI(); updateBgSwatch(); render();
+    return;
+  }
+
+  if (annColorEyedropperActive) {
+    const { x, y } = getCoords(e);
+    S.color = sampleHex(x, y);
+    const customBtn = document.getElementById('btn-ann-custom-color');
+    customBtn.style.background = S.color;
+    document.getElementById('ann-color-picker').value = S.color;
+    document.querySelectorAll('.color-dot').forEach(b => b.classList.remove('active'));
+    customBtn.classList.add('active');
+    annColorEyedropperActive = false;
+    document.getElementById('btn-ann-color-eyedropper').classList.remove('active');
     updateUI();
-    updateBgSwatch();
-    render();
     return;
   }
 
   if (eyedropperActive) {
     const { x, y } = getCoords(e);
-    const px = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    S.insetColor = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    S.insetColor = sampleHex(x, y);
     document.getElementById('inset-color-picker').value = S.insetColor;
     eyedropperActive = false;
     document.getElementById('btn-eyedropper').classList.remove('active');
-    updateUI();
-    render();
+    updateUI(); render();
     return;
   }
 
+  // ── Normal tool handling ───────────────────────────────────────
   mouseDown = true;
   const { x, y } = getCoords(e);
 
@@ -382,13 +446,14 @@ canvas.addEventListener('mousedown', (e) => {
   const base = { color: S.color, lw: S.lw };
 
   switch (S.tool) {
-    case 'draw':      S.current = { ...base, type: 'draw',      pts: [{ x, y }] };         break;
-    case 'line':      S.current = { ...base, type: 'line',      x1: x, y1: y, x2: x, y2: y }; break;
-    case 'arrow':     S.current = { ...base, type: 'arrow',     x1: x, y1: y, x2: x, y2: y }; break;
-    case 'rect':      S.current = { ...base, type: 'rect',      x, y, w: 0, h: 0 };        break;
-    case 'ellipse':   S.current = { ...base, type: 'ellipse',   x, y, w: 0, h: 0 };        break;
-    case 'highlight': S.current = { ...base, type: 'highlight', x, y, w: 0, h: 0 };        break;
-    case 'zoom':      S.current = { ...base, type: 'zoom',      sx: x, sy: y, dx: x, dy: y }; break;
+    case 'draw':      S.current = { ...base, type: 'draw',      pts: [{ x, y }] };              break;
+    case 'line':      S.current = { ...base, type: 'line',      x1: x, y1: y, x2: x, y2: y };  break;
+    case 'arrow':     S.current = { ...base, type: 'arrow',     x1: x, y1: y, x2: x, y2: y };  break;
+    case 'rect':      S.current = { ...base, type: 'rect',      x, y, w: 0, h: 0 };             break;
+    case 'rect-r':    S.current = { ...base, type: 'rect-r',    x, y, w: 0, h: 0 };             break;
+    case 'ellipse':   S.current = { ...base, type: 'ellipse',   x, y, w: 0, h: 0 };             break;
+    case 'highlight': S.current = { ...base, type: 'highlight', x, y, w: 0, h: 0, rounded: S.highlightRounded }; break;
+    case 'zoom':      S.current = { ...base, type: 'zoom',      sx: x, sy: y, dx: x, dy: y, shape: S.zoomShape, label: S.zoomLabel }; break;
   }
 });
 
@@ -398,11 +463,26 @@ canvas.addEventListener('mousemove', (e) => {
   const a = S.current;
 
   switch (a.type) {
-    case 'draw':                          a.pts.push({ x, y });   break;
-    case 'line':    case 'arrow':         a.x2 = x; a.y2 = y;    break;
-    case 'rect':    case 'ellipse':
-    case 'highlight':                     a.w = x - a.x; a.h = y - a.y; break;
-    case 'zoom':                          a.dx = x; a.dy = y;     break;
+    case 'draw':
+      a.pts.push({ x, y });
+      break;
+    case 'line': case 'arrow':
+      a.x2 = x; a.y2 = y;
+      break;
+    case 'rect': case 'rect-r': case 'highlight':
+      a.w = x - a.x; a.h = y - a.y;
+      break;
+    case 'ellipse':
+      a.w = x - a.x; a.h = y - a.y;
+      if (e.shiftKey) {
+        const s = Math.min(Math.abs(a.w), Math.abs(a.h));
+        a.w = Math.sign(a.w) * s || s;
+        a.h = Math.sign(a.h) * s || s;
+      }
+      break;
+    case 'zoom':
+      a.dx = x; a.dy = y;
+      break;
   }
 
   render();
@@ -429,35 +509,53 @@ function spawnTextInput(clientX, clientY, canvasX, canvasY) {
   inp.type = 'text';
   inp.placeholder = 'Type here…';
   Object.assign(inp.style, {
-    position: 'fixed', left: `${clientX}px`, top: `${clientY}px`,
-    zIndex: '9999', background: 'rgba(0,0,0,0.7)', border: '1px solid #f97316',
-    color: '#fff', padding: '4px 8px', borderRadius: '6px',
-    font: '14px Outfit, sans-serif', minWidth: '120px', outline: 'none',
+    position: 'fixed',
+    left: `${Math.min(clientX, window.innerWidth - 180)}px`,
+    top:  `${Math.min(clientY, window.innerHeight - 48)}px`,
+    zIndex: '99999',
+    background: 'rgba(12,16,24,0.92)',
+    border: '2px solid #E2186F',
+    color: '#fff',
+    padding: '5px 10px',
+    borderRadius: '6px',
+    font: `14px ${FONT_MAP[S.textFont] || FONT_MAP.sans}`,
+    minWidth: '140px',
+    outline: 'none',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
   });
   document.body.appendChild(inp);
-  inp.focus();
 
-  let done = false;
+  // Defer focus so the triggering mousedown doesn't immediately re-blur.
+  requestAnimationFrame(() => inp.focus());
+
+  let committed = false;
 
   const commit = () => {
-    if (done) return; done = true;
+    if (committed) return;
+    committed = true;
     const text = inp.value.trim();
     inp.remove();
     if (!text) return;
-    S.annotations.push({ type: 'text', color: S.color, lw: S.lw, text, x: canvasX, y: canvasY });
+    S.annotations.push({
+      type: 'text', color: S.color, lw: S.lw, font: S.textFont,
+      text, x: canvasX, y: canvasY,
+    });
     S.undone = [];
     render();
   };
 
-  const cancel = () => { if (done) return; done = true; inp.remove(); };
+  const cancel = () => { if (committed) return; committed = true; inp.remove(); };
 
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter')  commit();
-    if (e.key === 'Escape') cancel();
-    e.stopPropagation(); // prevent undo/redo shortcuts while typing
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    e.stopPropagation();
   });
 
-  inp.addEventListener('blur', () => { inp.value.trim() ? commit() : cancel(); });
+  // Small delay prevents the initial mousedown from triggering blur+commit immediately.
+  setTimeout(() => {
+    inp.addEventListener('blur', () => setTimeout(() => { inp.value.trim() ? commit() : cancel(); }, 80));
+  }, 200);
 }
 
 /* ── Undo / Redo ──────────────────────────────────────────── */
@@ -519,10 +617,11 @@ function updateUI() {
 
   if (has) {
     canvas.style.cursor =
-      bgEyedropperActive   ? 'crosshair' :
-      eyedropperActive     ? 'crosshair' :
-      S.tool === 'pointer' ? 'default'   :
-      S.tool === 'text'    ? 'text'      : 'crosshair';
+      bgEyedropperActive         ? 'crosshair' :
+      annColorEyedropperActive   ? 'crosshair' :
+      eyedropperActive           ? 'crosshair' :
+      S.tool === 'pointer'       ? 'default'   :
+      S.tool === 'text'          ? 'text'       : 'crosshair';
   }
 
   btnCopy.disabled   = !has;
@@ -694,17 +793,81 @@ document.querySelectorAll('.tool-cell').forEach(btn => {
     document.querySelectorAll('.tool-cell').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.tool = btn.dataset.tool;
+    updateToolOptions();
     updateUI();
   });
 });
 
-// Color dots
-document.querySelectorAll('.color-dot').forEach(btn => {
+function updateToolOptions() {
+  ['highlight', 'text', 'zoom'].forEach(t => {
+    const el = document.getElementById(`opt-${t}`);
+    if (el) el.style.display = S.tool === t ? 'flex' : 'none';
+  });
+}
+
+// ── Highlight style toggle ────────────────────────────────────
+document.querySelectorAll('[data-hstyle]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-hstyle]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    S.highlightRounded = btn.dataset.hstyle === 'rounded';
+  });
+});
+
+// ── Text font selector ────────────────────────────────────────
+document.querySelectorAll('[data-font]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-font]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    S.textFont = btn.dataset.font;
+  });
+});
+
+// ── Zoom shape + label ────────────────────────────────────────
+document.querySelectorAll('[data-zshape]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-zshape]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    S.zoomShape = btn.dataset.zshape;
+  });
+});
+
+document.getElementById('zoom-label-input').addEventListener('input', function () {
+  S.zoomLabel = this.value;
+});
+
+// ── Annotation color dots (preset) ───────────────────────────
+document.querySelectorAll('.color-dot[data-color]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.color-dot').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.color = btn.dataset.color;
   });
+});
+
+// ── Custom color picker ───────────────────────────────────────
+document.getElementById('btn-ann-custom-color').addEventListener('click', () => {
+  document.getElementById('ann-color-picker').click();
+});
+
+document.getElementById('ann-color-picker').addEventListener('input', function () {
+  S.color = this.value;
+  document.getElementById('btn-ann-custom-color').style.background = this.value;
+  document.querySelectorAll('.color-dot').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-ann-custom-color').classList.add('active');
+});
+
+// ── Annotation color eyedropper ───────────────────────────────
+document.getElementById('btn-ann-color-eyedropper').addEventListener('click', () => {
+  annColorEyedropperActive = !annColorEyedropperActive;
+  document.getElementById('btn-ann-color-eyedropper').classList.toggle('active', annColorEyedropperActive);
+  if (annColorEyedropperActive) {
+    bgEyedropperActive = false;
+    document.getElementById('btn-bg-eyedropper')?.classList.remove('active');
+    eyedropperActive = false;
+    document.getElementById('btn-eyedropper').classList.remove('active');
+  }
+  updateUI();
 });
 
 // Tab switching
