@@ -45,7 +45,7 @@ const S = {
   bgCustomColor:    '#ffffff',
   bgCustomImage:    null,
   ratio:            'auto',
-  inset:            12,
+  inset:            30,
   insetColor:       '#ffffff',
   tool:             'draw',
   color:            '#1A2B5C',
@@ -353,14 +353,16 @@ function drawZoomLens(c, a, canvasW, canvasH) {
   c.stroke();
   c.restore();
 
-  // Optional label — top-right of the lens box
+  // Label overlaid inside top-right of lens area.
   if (a.label) {
     c.save();
-    c.font         = '11px "DM Mono", monospace';
+    c.font         = 'bold 11px Montserrat, sans-serif';
     c.fillStyle    = a.color;
     c.textAlign    = 'right';
-    c.textBaseline = 'bottom';
-    c.fillText(a.label, lx + lw, ly - 4);
+    c.textBaseline = 'top';
+    c.shadowColor  = 'rgba(0,0,0,0.7)';
+    c.shadowBlur   = 4;
+    c.fillText(a.label, lx + lw - 6, ly + 6);
     c.restore();
   }
 }
@@ -563,9 +565,69 @@ function positionSelectionToolbar() {
   tb.style.display = 'flex';
   tb.style.left    = `${Math.round(sx)}px`;
   tb.style.top     = `${Math.round(sy)}px`;
+}
 
-  const colorInput = document.getElementById('ann-tb-color');
-  if (colorInput) colorInput.value = a.color || '#E2186F';
+function syncSidebarToSelection() {
+  if (selectedIndex < 0 || selectedIndex >= S.annotations.length) return;
+  const a = S.annotations[selectedIndex];
+
+  // Auto-switch to Annotate tab.
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'annotate'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-annotate').classList.add('active');
+
+  // Highlight the matching tool button.
+  document.querySelectorAll('.tool-cell').forEach(b => b.classList.toggle('active', b.dataset.tool === a.type));
+
+  // Color.
+  S.color = a.color;
+  document.getElementById('ann-color-picker').value = a.color;
+  const presetMatch = [...document.querySelectorAll('.color-dot[data-color]')].some(b => {
+    const m = b.dataset.color.toLowerCase() === a.color.toLowerCase();
+    b.classList.toggle('active', m);
+    return m;
+  });
+  const customBtn = document.getElementById('btn-ann-custom-color');
+  if (!presetMatch) {
+    customBtn.style.background = a.color;
+    customBtn.classList.add('active');
+  } else {
+    customBtn.classList.remove('active');
+  }
+
+  // Line width.
+  S.lw = a.lw;
+  document.getElementById('sl-lw').value = a.lw;
+  document.getElementById('val-lw').textContent = a.lw + 'px';
+
+  // Show tool-specific option panel.
+  S.tool = a.type;
+  updateToolOptions();
+
+  if (a.type === 'highlight') {
+    const style = a.rounded ? 'rounded' : 'normal';
+    document.querySelectorAll('[data-hstyle]').forEach(b => b.classList.toggle('active', b.dataset.hstyle === style));
+    S.highlightRounded = a.rounded;
+  }
+
+  if (a.type === 'text') {
+    const font = a.font || 'sans';
+    document.querySelectorAll('[data-font]').forEach(b => b.classList.toggle('active', b.dataset.font === font));
+    S.textFont = font;
+  }
+
+  if (a.type === 'zoom') {
+    const shape = a.shape || 'circle';
+    document.querySelectorAll('[data-zshape]').forEach(b => b.classList.toggle('active', b.dataset.zshape === shape));
+    S.zoomShape = shape;
+    const zl = a.zoom || 2.5;
+    S.zoomLevel = zl;
+    document.getElementById('sl-zoom-level').value = Math.round(zl * 10);
+    document.getElementById('val-zoom-level').textContent = zl.toFixed(1) + '×';
+    const lbl = a.label || '';
+    document.getElementById('zoom-label-input').value = lbl;
+    S.zoomLabel = lbl;
+  }
 }
 
 /* ── Canvas mouse events ──────────────────────────────────── */
@@ -634,6 +696,7 @@ canvas.addEventListener('mousedown', (e) => {
     selectedIndex = hitIdx;
     selDrag = { mode: 'move', startX: x, startY: y,
                 orig: JSON.parse(JSON.stringify(S.annotations[hitIdx])) };
+    syncSidebarToSelection();
     render();
     return;
   }
@@ -887,6 +950,10 @@ function updateUI() {
 document.getElementById('sl-lw').addEventListener('input', function () {
   S.lw = +this.value;
   document.getElementById('val-lw').textContent = S.lw + 'px';
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+    S.annotations[selectedIndex].lw = S.lw;
+    render();
+  }
 });
 
 document.getElementById('sl-inset').addEventListener('input', function () {
@@ -1050,6 +1117,11 @@ document.querySelectorAll('[data-hstyle]').forEach(btn => {
     document.querySelectorAll('[data-hstyle]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.highlightRounded = btn.dataset.hstyle === 'rounded';
+    if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+        S.annotations[selectedIndex].type === 'highlight') {
+      S.annotations[selectedIndex].rounded = S.highlightRounded;
+      render();
+    }
   });
 });
 
@@ -1059,6 +1131,11 @@ document.querySelectorAll('[data-font]').forEach(btn => {
     document.querySelectorAll('[data-font]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.textFont = btn.dataset.font;
+    if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+        S.annotations[selectedIndex].type === 'text') {
+      S.annotations[selectedIndex].font = S.textFont;
+      render();
+    }
   });
 });
 
@@ -1068,16 +1145,31 @@ document.querySelectorAll('[data-zshape]').forEach(btn => {
     document.querySelectorAll('[data-zshape]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.zoomShape = btn.dataset.zshape;
+    if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+        S.annotations[selectedIndex].type === 'zoom') {
+      S.annotations[selectedIndex].shape = S.zoomShape;
+      render();
+    }
   });
 });
 
 document.getElementById('zoom-label-input').addEventListener('input', function () {
   S.zoomLabel = this.value;
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+      S.annotations[selectedIndex].type === 'zoom') {
+    S.annotations[selectedIndex].label = S.zoomLabel;
+    render();
+  }
 });
 
 document.getElementById('sl-zoom-level').addEventListener('input', function () {
   S.zoomLevel = +this.value / 10;
   document.getElementById('val-zoom-level').textContent = S.zoomLevel.toFixed(1) + '×';
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length &&
+      S.annotations[selectedIndex].type === 'zoom') {
+    S.annotations[selectedIndex].zoom = S.zoomLevel;
+    render();
+  }
 });
 
 // ── Annotation color dots (preset) ───────────────────────────
@@ -1086,6 +1178,10 @@ document.querySelectorAll('.color-dot[data-color]').forEach(btn => {
     document.querySelectorAll('.color-dot').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     S.color = btn.dataset.color;
+    if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+      S.annotations[selectedIndex].color = S.color;
+      render();
+    }
   });
 });
 
@@ -1096,9 +1192,14 @@ document.getElementById('btn-ann-custom-color').addEventListener('click', () => 
 
 document.getElementById('ann-color-picker').addEventListener('input', function () {
   S.color = this.value;
-  document.getElementById('btn-ann-custom-color').style.background = this.value;
+  const customBtn = document.getElementById('btn-ann-custom-color');
+  customBtn.style.background = this.value;
   document.querySelectorAll('.color-dot').forEach(b => b.classList.remove('active'));
-  document.getElementById('btn-ann-custom-color').classList.add('active');
+  customBtn.classList.add('active');
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+    S.annotations[selectedIndex].color = S.color;
+    render();
+  }
 });
 
 // ── Annotation color eyedropper ───────────────────────────────
@@ -1115,13 +1216,6 @@ document.getElementById('btn-ann-color-eyedropper').addEventListener('click', ()
 });
 
 // ── Floating selection toolbar ────────────────────────────────
-document.getElementById('ann-tb-color').addEventListener('input', function () {
-  if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
-    S.annotations[selectedIndex].color = this.value;
-    render();
-  }
-});
-
 document.getElementById('ann-tb-delete').addEventListener('click', () => {
   if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
     S.annotations.splice(selectedIndex, 1);
