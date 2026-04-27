@@ -12,7 +12,7 @@
 <body>
 <div id="app">
 
-  <!-- ── Canvas area ─────────────────────────────────────── -->
+  <!-- ── Canvas area ───────────────────────────────────────────── -->
   <div id="canvas-area">
     <div id="canvas-wrap">
       <canvas id="canvas"></canvas>
@@ -29,12 +29,12 @@
     </div>
   </div>
 
-  <!-- ── Annotation selection toolbar (floating) ─────────── -->
+  <!-- ── Annotation selection toolbar (floating) ───────────────────── -->
   <div id="ann-toolbar">
     <button id="ann-tb-delete" class="ann-tb-delete" title="Delete (Del)">✕</button>
   </div>
 
-  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
   <aside id="sidebar">
 
     <div id="sb-header">
@@ -142,6 +142,16 @@
           <button class="btn-save-preset" id="btn-save-preset">Save</button>
         </div>
         <div class="preset-chips" id="preset-chips"></div>
+
+        <div class="section-sep"></div>
+
+        <div class="toggle-row">
+          <span class="ctrl-label">Footer bar</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="chk-footer" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
 
       </div><!-- /panel-style -->
 
