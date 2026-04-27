@@ -36,7 +36,6 @@
       "description": "Select a region to capture"
     }
   },
-  "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
       "resources": ["editor/editor.html"],
