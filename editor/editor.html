@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapBeauty — Editor</title>
+  <title>Snapz — Editor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,500;0,600;0,700;1,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="editor.css" />
 </head>
 <body>
@@ -29,12 +29,17 @@
     </div>
   </div>
 
+  <!-- ── Annotation selection toolbar (floating) ─────────── -->
+  <div id="ann-toolbar">
+    <input type="color" id="ann-tb-color" class="ann-tb-color" title="Color" value="#1A2B5C" />
+    <button id="ann-tb-delete" class="ann-tb-delete" title="Delete (Del)">✕</button>
+  </div>
+
   <!-- ── Sidebar ─────────────────────────────────────────── -->
   <aside id="sidebar">
 
     <div id="sb-header">
-      <div class="sb-logo"><span class="snap">Snap</span><span class="beauty">Beauty</span></div>
-      <div class="sb-tagline">screenshot beautifier</div>
+      <div class="sb-logo">Snapz</div>
     </div>
 
     <div id="tab-switcher">
@@ -67,9 +72,9 @@
 
         <div class="ctrl-row">
           <span class="ctrl-label">Inset Frame</span>
-          <span class="ctrl-value" id="val-inset">0px</span>
+          <span class="ctrl-value" id="val-inset">12px</span>
         </div>
-        <input type="range" id="sl-inset" class="slider" min="0" max="40" value="0" />
+        <input type="range" id="sl-inset" class="slider" min="0" max="40" value="12" />
         <div class="inset-color-row">
           <input type="color" id="inset-color-picker" class="inset-color-swatch" value="#ffffff" title="Inset frame color" />
           <button id="btn-auto-sample" class="btn-color-action">Auto</button>
@@ -80,14 +85,14 @@
           <span class="ctrl-label">Background</span>
         </div>
         <div class="swatch-grid" id="bg-swatches">
-          <button class="swatch active" data-bg="flink"     title="Flink"></button>
+          <button class="swatch"        data-bg="flink"     title="Flink"></button>
           <button class="swatch"        data-bg="neonnight"  title="Neon Night"></button>
           <button class="swatch"        data-bg="lavender"   title="Lavender"></button>
           <button class="swatch"        data-bg="midnight"   title="Midnight"></button>
           <button class="swatch"        data-bg="magenta"    title="Magenta"></button>
           <button class="swatch"        data-bg="dusk"       title="Dusk"></button>
           <button class="swatch"        data-bg="blush"      title="Blush"></button>
-          <button class="swatch"        data-bg="deepsea"    title="Deep Sea"></button>
+          <button class="swatch active" data-bg="deepsea"    title="Deep Sea"></button>
           <button class="swatch"        data-bg="slate"      title="Slate"></button>
           <button class="swatch swatch--checker" data-bg="none" title="None"></button>
         </div>
@@ -140,13 +145,12 @@
       <!-- Annotate panel -->
       <div id="panel-annotate" class="panel">
 
-        <!-- Primary drawing tools -->
+        <!-- Primary drawing tools — 3×2 grid -->
         <div class="ctrl-row ctrl-row--solo">
           <span class="ctrl-label">Tools</span>
         </div>
-        <div class="tool-grid">
-          <button class="tool-cell active" data-tool="pointer" title="Pointer">↖</button>
-          <button class="tool-cell" data-tool="draw" title="Freehand">
+        <div class="tool-grid tool-grid--3col">
+          <button class="tool-cell active" data-tool="draw" title="Freehand">
             <svg width="18" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
               <path d="M1 9 C3 3 5 3 7 7 C9 11 11 11 13 7 C15 3 17 3 17 5"/>
             </svg>
@@ -155,7 +159,7 @@
           <button class="tool-cell" data-tool="arrow"  title="Arrow">→</button>
           <button class="tool-cell" data-tool="rect"   title="Rectangle">□</button>
           <button class="tool-cell" data-tool="rect-r" title="Rounded Rect">
-            <svg width="16" height="13" viewBox="0 0 16 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none">
+            <svg width="12" height="10" viewBox="0 0 16 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none">
               <rect x="1" y="1" width="14" height="11" rx="3"/>
             </svg>
           </button>
@@ -193,6 +197,11 @@
             <button class="tool-opt-pill" data-zshape="rect">□ Rect</button>
             <button class="tool-opt-pill" data-zshape="rect-r">▢ Rounded</button>
           </div>
+          <div class="tool-opts-row" style="align-items:center;justify-content:space-between">
+            <span class="ctrl-label" style="font-size:10px;margin:0">Zoom</span>
+            <span class="ctrl-value" id="val-zoom-level" style="font-size:10px">2.5×</span>
+          </div>
+          <input type="range" id="sl-zoom-level" class="slider" min="15" max="50" value="25" step="5" />
           <input type="text" id="zoom-label-input" class="zoom-label-input" placeholder="Label…" maxlength="32" />
         </div>
 
@@ -201,18 +210,18 @@
           <span class="ctrl-label">Color</span>
         </div>
         <div class="color-row">
-          <button class="color-dot active" data-color="#E2186F" style="background:#E2186F" title="Flink Pink"></button>
+          <button class="color-dot"        data-color="#E2186F" style="background:#E2186F" title="Flink Pink"></button>
           <button class="color-dot"        data-color="#FF7EB3" style="background:#FF7EB3" title="Light Pink"></button>
           <button class="color-dot"        data-color="#C4145F" style="background:#C4145F" title="Deep Pink"></button>
-          <button class="color-dot"        data-color="#1A2B5C" style="background:#1A2B5C" title="Navy"></button>
+          <button class="color-dot active" data-color="#1A2B5C" style="background:#1A2B5C" title="Navy"></button>
           <button class="color-dot"        data-color="#3D5299" style="background:#3D5299" title="Mid Navy"></button>
           <button class="color-dot"        data-color="#CCC5E0" style="background:#CCC5E0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)" title="Lavender"></button>
-          <button class="color-dot"        data-color="#ffffff" style="background:#ffffff" title="White"></button>
+          <button class="color-dot"        data-color="#ffffff" style="background:#ffffff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)" title="White"></button>
           <button class="color-dot color-dot--dark" data-color="#000000" style="background:#000000" title="Black"></button>
           <!-- Custom color: clicking opens native picker -->
-          <button class="color-dot color-dot--custom" id="btn-ann-custom-color" title="Custom color" style="background:#E2186F">+</button>
+          <button class="color-dot color-dot--custom" id="btn-ann-custom-color" title="Custom color" style="background:#1A2B5C">+</button>
         </div>
-        <input type="color" id="ann-color-picker" value="#E2186F"
+        <input type="color" id="ann-color-picker" value="#1A2B5C"
                style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none" />
         <button class="bg-action-btn" id="btn-ann-color-eyedropper" style="margin-top:4px;margin-bottom:8px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22l10-10"/><path d="M3.5 12.5 16 20l5-5-7.5-12.5L3.5 12.5z"/></svg>
@@ -233,7 +242,7 @@
         </div>
         <button class="action-btn action-btn--full" id="btn-clear-ann">🗑 Clear All</button>
 
-        <p class="tip-text">Tip: Cmd+Z / Shift+Z · Shift+drag = circle</p>
+        <p class="tip-text">Tip: Cmd+Z · Shift+Z · Shift+drag = circle · Del = delete selected</p>
 
       </div><!-- /panel-annotate -->
 

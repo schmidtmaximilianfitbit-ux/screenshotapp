@@ -41,19 +41,20 @@ const S = {
   padding:          48,
   radius:           12,
   shadow:           40,
-  bg:               'flink',
+  bg:               'deepsea',
   bgCustomColor:    '#ffffff',
   bgCustomImage:    null,
   ratio:            'auto',
-  inset:            0,
+  inset:            12,
   insetColor:       '#ffffff',
-  tool:             'pointer',
-  color:            '#E2186F',
+  tool:             'draw',
+  color:            '#1A2B5C',
   lw:               3,
   // annotation-tool sub-options
   textFont:         'sans',
   highlightRounded: false,
   zoomShape:        'circle',
+  zoomLevel:        2.5,
   zoomLabel:        '',
   annotations:      [],
   undone:           [],
@@ -70,6 +71,10 @@ let userPresets = [];
 let eyedropperActive         = false;
 let bgEyedropperActive       = false;
 let annColorEyedropperActive = false;
+
+// Annotation selection state.
+let selectedIndex = -1;
+let selDrag       = null; // { mode:'move'|'nw'|'ne'|'sw'|'se'|'p1'|'p2', startX, startY, orig }
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 
@@ -303,11 +308,19 @@ function drawArrow(c, x1, y1, x2, y2, lw) {
 function drawZoomLens(c, a, canvasW, canvasH) {
   if (!S.img || !lastDims) return;
 
-  const LENS_R  = Math.max(40, a.lw * 10);
-  const ZOOM    = 2.5;
-  const srcSize = (LENS_R * 2) / ZOOM;
-  const shape   = a.shape || 'circle';
-  const lx = a.dx - LENS_R, ly = a.dy - LENS_R, ld = LENS_R * 2;
+  const lx   = Math.min(a.x, a.x + a.w);
+  const ly   = Math.min(a.y, a.y + a.h);
+  const lw   = Math.max(Math.abs(a.w), 10);
+  const lh   = Math.max(Math.abs(a.h), 10);
+  const zoom = a.zoom || 2.5;
+  const shape = a.shape || 'circle';
+
+  // Source region: the area of the base image the lens magnifies.
+  // It is centered at the lens center, zoom-times smaller than the lens.
+  const cx   = lx + lw / 2;
+  const cy   = ly + lh / 2;
+  const srcW = lw / zoom;
+  const srcH = lh / zoom;
 
   const osc  = new OffscreenCanvas(canvasW, canvasH);
   const octx = osc.getContext('2d');
@@ -315,22 +328,27 @@ function drawZoomLens(c, a, canvasW, canvasH) {
 
   function shapePath(ctx) {
     ctx.beginPath();
-    if (shape === 'circle')  ctx.arc(a.dx, a.dy, LENS_R, 0, Math.PI * 2);
-    else if (shape === 'rect') ctx.rect(lx, ly, ld, ld);
-    else                     rrectPath(ctx, lx, ly, ld, ld, 12);
+    if (shape === 'circle') {
+      const r = Math.min(lw, lh) / 2;
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    } else if (shape === 'rect') {
+      ctx.rect(lx, ly, lw, lh);
+    } else {
+      rrectPath(ctx, lx, ly, lw, lh, 12);
+    }
   }
 
-  // Clip to shape and draw magnified region.
+  // Clip to shape, draw magnified source into lens area.
   c.save();
   shapePath(c);
   c.clip();
-  c.drawImage(osc, a.sx - srcSize / 2, a.sy - srcSize / 2, srcSize, srcSize, lx, ly, ld, ld);
+  c.drawImage(osc, cx - srcW / 2, cy - srcH / 2, srcW, srcH, lx, ly, lw, lh);
   c.restore();
 
   // Border
   c.save();
   c.strokeStyle = a.color;
-  c.lineWidth   = 3;
+  c.lineWidth   = 2.5;
   shapePath(c);
   c.stroke();
   c.restore();
@@ -342,7 +360,7 @@ function drawZoomLens(c, a, canvasW, canvasH) {
     c.fillStyle    = a.color;
     c.textAlign    = 'right';
     c.textBaseline = 'bottom';
-    c.fillText(a.label, lx + ld, ly - 4);
+    c.fillText(a.label, lx + lw, ly - 4);
     c.restore();
   }
 }
@@ -360,6 +378,9 @@ function render() {
 
   const all = [...S.annotations, ...(S.current ? [S.current] : [])];
   all.forEach(a => drawAnnotation(ctx, a, dims.w, dims.h));
+
+  drawSelectionOverlay(ctx);
+  positionSelectionToolbar();
 
   updateUI();
 }
@@ -383,6 +404,168 @@ function getCoords(e) {
     x: (e.clientX - r.left) * (canvas.width  / r.width),
     y: (e.clientY - r.top)  * (canvas.height / r.height),
   };
+}
+
+/* ── Annotation selection helpers ────────────────────────── */
+
+function getAnnotationBBox(a) {
+  if (!a) return null;
+  switch (a.type) {
+    case 'rect': case 'rect-r': case 'ellipse': case 'highlight': case 'zoom':
+      return { x: Math.min(a.x, a.x + a.w), y: Math.min(a.y, a.y + a.h),
+               w: Math.max(Math.abs(a.w), 4), h: Math.max(Math.abs(a.h), 4) };
+    case 'line': case 'arrow':
+      return { x: Math.min(a.x1, a.x2), y: Math.min(a.y1, a.y2),
+               w: Math.max(Math.abs(a.x2 - a.x1), 4), h: Math.max(Math.abs(a.y2 - a.y1), 4) };
+    case 'draw': {
+      if (!a.pts || !a.pts.length) return null;
+      const xs = a.pts.map(p => p.x), ys = a.pts.map(p => p.y);
+      return { x: Math.min(...xs), y: Math.min(...ys),
+               w: Math.max(Math.max(...xs) - Math.min(...xs), 4),
+               h: Math.max(Math.max(...ys) - Math.min(...ys), 4) };
+    }
+    case 'text': {
+      const fs = Math.max(16, a.lw * 8);
+      const approxW = a.text ? a.text.length * fs * 0.55 : 80;
+      return { x: a.x, y: a.y, w: Math.max(approxW, 20), h: fs + 4 };
+    }
+    default: return null;
+  }
+}
+
+function hitTestAnnotations(x, y) {
+  const PAD = 8;
+  for (let i = S.annotations.length - 1; i >= 0; i--) {
+    const bb = getAnnotationBBox(S.annotations[i]);
+    if (!bb) continue;
+    if (x >= bb.x - PAD && x <= bb.x + bb.w + PAD &&
+        y >= bb.y - PAD && y <= bb.y + bb.h + PAD) return i;
+  }
+  return -1;
+}
+
+function getHandleAt(x, y) {
+  if (selectedIndex < 0 || selectedIndex >= S.annotations.length) return null;
+  const a  = S.annotations[selectedIndex];
+  const bb = getAnnotationBBox(a);
+  if (!bb) return null;
+
+  const PAD = 6, H = 9;
+  const bx = bb.x - PAD, by = bb.y - PAD, bw = bb.w + PAD * 2, bh = bb.h + PAD * 2;
+
+  // For line/arrow expose endpoint handles (p1, p2) instead of corners.
+  if (a.type === 'line' || a.type === 'arrow') {
+    if (Math.abs(x - a.x1) <= H && Math.abs(y - a.y1) <= H) return 'p1';
+    if (Math.abs(x - a.x2) <= H && Math.abs(y - a.y2) <= H) return 'p2';
+    return null;
+  }
+
+  const corners = { nw: [bx, by], ne: [bx + bw, by], sw: [bx, by + bh], se: [bx + bw, by + bh] };
+  for (const [name, [hx, hy]] of Object.entries(corners)) {
+    if (Math.abs(x - hx) <= H && Math.abs(y - hy) <= H) return name;
+  }
+  return null;
+}
+
+function moveAnnotation(a, orig, dx, dy) {
+  switch (a.type) {
+    case 'rect': case 'rect-r': case 'ellipse': case 'highlight': case 'zoom': case 'text':
+      a.x = orig.x + dx; a.y = orig.y + dy; break;
+    case 'line': case 'arrow':
+      a.x1 = orig.x1 + dx; a.y1 = orig.y1 + dy;
+      a.x2 = orig.x2 + dx; a.y2 = orig.y2 + dy; break;
+    case 'draw':
+      a.pts = orig.pts.map(p => ({ x: p.x + dx, y: p.y + dy })); break;
+  }
+}
+
+function resizeAnnotation(a, orig, handle, dx, dy) {
+  if (handle === 'p1') { a.x1 = orig.x1 + dx; a.y1 = orig.y1 + dy; return; }
+  if (handle === 'p2') { a.x2 = orig.x2 + dx; a.y2 = orig.y2 + dy; return; }
+
+  const bb = getAnnotationBBox(orig);
+  if (!bb) return;
+  let { x: nx, y: ny, w: nw, h: nh } = bb;
+  if (handle === 'nw') { nx += dx; ny += dy; nw -= dx; nh -= dy; }
+  else if (handle === 'ne') { ny += dy; nw += dx; nh -= dy; }
+  else if (handle === 'sw') { nx += dx; nw -= dx; nh += dy; }
+  else if (handle === 'se') { nw += dx; nh += dy; }
+
+  a.x = nx; a.y = ny;
+  a.w = Math.max(4, nw);
+  a.h = Math.max(4, nh);
+}
+
+function drawSelectionOverlay(c) {
+  if (selectedIndex < 0 || selectedIndex >= S.annotations.length) return;
+  const a  = S.annotations[selectedIndex];
+  const bb = getAnnotationBBox(a);
+  if (!bb) return;
+
+  const PAD = 6, H = 7;
+  const bx = bb.x - PAD, by = bb.y - PAD, bw = bb.w + PAD * 2, bh = bb.h + PAD * 2;
+
+  c.save();
+  c.strokeStyle = '#E2186F';
+  c.lineWidth   = 1.5;
+  c.setLineDash([4, 3]);
+  c.strokeRect(bx, by, bw, bh);
+  c.setLineDash([]);
+
+  let handles;
+  if (a.type === 'line' || a.type === 'arrow') {
+    handles = [[a.x1, a.y1], [a.x2, a.y2]];
+  } else if (a.type === 'draw' || a.type === 'text') {
+    handles = [];
+  } else {
+    handles = [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]];
+  }
+
+  c.fillStyle   = '#FFFFFF';
+  c.strokeStyle = '#E2186F';
+  c.lineWidth   = 1.5;
+  handles.forEach(([hx, hy]) => {
+    c.fillRect(hx - H / 2, hy - H / 2, H, H);
+    c.strokeRect(hx - H / 2, hy - H / 2, H, H);
+  });
+  c.restore();
+}
+
+function canvasToScreen(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: r.left + cx * (r.width  / canvas.width),
+    y: r.top  + cy * (r.height / canvas.height),
+  };
+}
+
+function positionSelectionToolbar() {
+  const tb = document.getElementById('ann-toolbar');
+  if (!tb) return;
+
+  if (selectedIndex < 0 || selectedIndex >= S.annotations.length || S.current) {
+    tb.style.display = 'none';
+    return;
+  }
+
+  const a  = S.annotations[selectedIndex];
+  const bb = getAnnotationBBox(a);
+  if (!bb) { tb.style.display = 'none'; return; }
+
+  const PAD   = 6;
+  const pt    = canvasToScreen(bb.x - PAD, bb.y - PAD);
+  const tbH   = 36;
+
+  let sx = pt.x;
+  let sy = pt.y - tbH - 6;
+  if (sy < 4) sy = pt.y + 4;
+
+  tb.style.display = 'flex';
+  tb.style.left    = `${Math.round(sx)}px`;
+  tb.style.top     = `${Math.round(sy)}px`;
+
+  const colorInput = document.getElementById('ann-tb-color');
+  if (colorInput) colorInput.value = a.color || '#E2186F';
 }
 
 /* ── Canvas mouse events ──────────────────────────────────── */
@@ -433,10 +616,32 @@ canvas.addEventListener('mousedown', (e) => {
   }
 
   // ── Normal tool handling ───────────────────────────────────────
-  mouseDown = true;
   const { x, y } = getCoords(e);
 
-  if (S.tool === 'pointer') return;
+  // Check resize handle on already-selected annotation first.
+  const handle = getHandleAt(x, y);
+  if (handle) {
+    mouseDown = true;
+    selDrag = { mode: handle, startX: x, startY: y,
+                orig: JSON.parse(JSON.stringify(S.annotations[selectedIndex])) };
+    return;
+  }
+
+  // Check if clicking on an existing annotation to select/move it.
+  const hitIdx = hitTestAnnotations(x, y);
+  if (hitIdx >= 0) {
+    mouseDown = true;
+    selectedIndex = hitIdx;
+    selDrag = { mode: 'move', startX: x, startY: y,
+                orig: JSON.parse(JSON.stringify(S.annotations[hitIdx])) };
+    render();
+    return;
+  }
+
+  // Clicked empty canvas: deselect and start drawing.
+  selectedIndex = -1;
+  positionSelectionToolbar();
+  mouseDown = true;
 
   if (S.tool === 'text') {
     spawnTextInput(e.clientX, e.clientY, x, y);
@@ -453,13 +658,26 @@ canvas.addEventListener('mousedown', (e) => {
     case 'rect-r':    S.current = { ...base, type: 'rect-r',    x, y, w: 0, h: 0 };             break;
     case 'ellipse':   S.current = { ...base, type: 'ellipse',   x, y, w: 0, h: 0 };             break;
     case 'highlight': S.current = { ...base, type: 'highlight', x, y, w: 0, h: 0, rounded: S.highlightRounded }; break;
-    case 'zoom':      S.current = { ...base, type: 'zoom',      sx: x, sy: y, dx: x, dy: y, shape: S.zoomShape, label: S.zoomLabel }; break;
+    case 'zoom':      S.current = { ...base, type: 'zoom',      x, y, w: 0, h: 0, zoom: S.zoomLevel, shape: S.zoomShape, label: S.zoomLabel }; break;
   }
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!mouseDown || !S.current) return;
+  if (!mouseDown) return;
   const { x, y } = getCoords(e);
+
+  // Selection drag (move or resize).
+  if (selDrag && selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+    const dx = x - selDrag.startX;
+    const dy = y - selDrag.startY;
+    const a  = S.annotations[selectedIndex];
+    if (selDrag.mode === 'move') moveAnnotation(a, selDrag.orig, dx, dy);
+    else resizeAnnotation(a, selDrag.orig, selDrag.mode, dx, dy);
+    render();
+    return;
+  }
+
+  if (!S.current) return;
   const a = S.current;
 
   switch (a.type) {
@@ -469,7 +687,7 @@ canvas.addEventListener('mousemove', (e) => {
     case 'line': case 'arrow':
       a.x2 = x; a.y2 = y;
       break;
-    case 'rect': case 'rect-r': case 'highlight':
+    case 'rect': case 'rect-r': case 'highlight': case 'zoom':
       a.w = x - a.x; a.h = y - a.y;
       break;
     case 'ellipse':
@@ -479,9 +697,6 @@ canvas.addEventListener('mousemove', (e) => {
         a.w = Math.sign(a.w) * s || s;
         a.h = Math.sign(a.h) * s || s;
       }
-      break;
-    case 'zoom':
-      a.dx = x; a.dy = y;
       break;
   }
 
@@ -494,6 +709,13 @@ canvas.addEventListener('mouseleave', commitCurrent);
 function commitCurrent() {
   if (!mouseDown) return;
   mouseDown = false;
+
+  if (selDrag) {
+    selDrag = null;
+    render();
+    return;
+  }
+
   if (S.current) {
     S.annotations.push(S.current);
     S.current = null;
@@ -563,12 +785,14 @@ function spawnTextInput(clientX, clientY, canvasX, canvasY) {
 function undo() {
   if (!S.annotations.length) return;
   S.undone.unshift(S.annotations.pop());
+  selectedIndex = -1;
   render();
 }
 
 function redo() {
   if (!S.undone.length) return;
   S.annotations.push(S.undone.shift());
+  selectedIndex = -1;
   render();
 }
 
@@ -578,11 +802,29 @@ btnRedo.addEventListener('click', redo);
 document.getElementById('btn-clear-ann').addEventListener('click', () => {
   S.annotations = [];
   S.undone = [];
+  selectedIndex = -1;
   render();
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
+
+  if (e.key === 'Escape') {
+    selectedIndex = -1;
+    positionSelectionToolbar();
+    render();
+    return;
+  }
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIndex >= 0) {
+    e.preventDefault();
+    S.annotations.splice(selectedIndex, 1);
+    selectedIndex = -1;
+    positionSelectionToolbar();
+    render();
+    return;
+  }
+
   const mod = e.metaKey || e.ctrlKey;
   if (!mod) return;
 
@@ -617,11 +859,8 @@ function updateUI() {
 
   if (has) {
     canvas.style.cursor =
-      bgEyedropperActive         ? 'crosshair' :
-      annColorEyedropperActive   ? 'crosshair' :
-      eyedropperActive           ? 'crosshair' :
-      S.tool === 'pointer'       ? 'default'   :
-      S.tool === 'text'          ? 'text'       : 'crosshair';
+      bgEyedropperActive || annColorEyedropperActive || eyedropperActive ? 'crosshair' :
+      S.tool === 'text' ? 'text' : 'crosshair';
   }
 
   btnCopy.disabled   = !has;
@@ -836,6 +1075,11 @@ document.getElementById('zoom-label-input').addEventListener('input', function (
   S.zoomLabel = this.value;
 });
 
+document.getElementById('sl-zoom-level').addEventListener('input', function () {
+  S.zoomLevel = +this.value / 10;
+  document.getElementById('val-zoom-level').textContent = S.zoomLevel.toFixed(1) + '×';
+});
+
 // ── Annotation color dots (preset) ───────────────────────────
 document.querySelectorAll('.color-dot[data-color]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -868,6 +1112,23 @@ document.getElementById('btn-ann-color-eyedropper').addEventListener('click', ()
     document.getElementById('btn-eyedropper').classList.remove('active');
   }
   updateUI();
+});
+
+// ── Floating selection toolbar ────────────────────────────────
+document.getElementById('ann-tb-color').addEventListener('input', function () {
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+    S.annotations[selectedIndex].color = this.value;
+    render();
+  }
+});
+
+document.getElementById('ann-tb-delete').addEventListener('click', () => {
+  if (selectedIndex >= 0 && selectedIndex < S.annotations.length) {
+    S.annotations.splice(selectedIndex, 1);
+    selectedIndex = -1;
+    positionSelectionToolbar();
+    render();
+  }
 });
 
 // Tab switching
@@ -1030,10 +1291,13 @@ btnCopy.addEventListener('click', () => {
   }, 'image/png');
 });
 
+window.addEventListener('resize', positionSelectionToolbar);
+canvasArea.addEventListener('scroll', positionSelectionToolbar);
+
 btnExport.addEventListener('click', () => {
   if (!S.img) return;
   const link = document.createElement('a');
-  link.download = `snapbeauty-${Date.now()}.png`;
+  link.download = `snapz-${Date.now()}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 });
@@ -1043,13 +1307,16 @@ btnExport.addEventListener('click', () => {
 function loadImage(src) {
   const img = new Image();
   img.onload = () => {
-    S.img = img;
+    S.img         = img;
     S.annotations = [];
-    S.undone  = [];
-    S.current = null;
+    S.undone      = [];
+    S.current     = null;
+    selectedIndex = -1;
+    // Auto-sample inset color from image edges if inset is active.
+    if (S.inset > 0) sampleEdgeColor();
     render();
     canvas.classList.remove('canvas-fadein');
-    void canvas.offsetHeight; // force reflow to restart animation
+    void canvas.offsetHeight;
     canvas.classList.add('canvas-fadein');
   };
   img.src = src;
@@ -1113,9 +1380,11 @@ window.addEventListener('paste', (e) => {
 
 // Clear image
 document.getElementById('btn-clear-image').addEventListener('click', () => {
-  S.img = null;
+  S.img         = null;
   S.annotations = [];
-  S.undone  = [];
-  S.current = null;
+  S.undone      = [];
+  S.current     = null;
+  selectedIndex = -1;
+  positionSelectionToolbar();
   updateUI();
 });
