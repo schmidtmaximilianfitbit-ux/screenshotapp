@@ -63,8 +63,8 @@ html, body {
 }
 
 #drop-zone.drag-over {
-  border-color: #E2186F;
-  background: rgba(226,24,111,0.06);
+  border-color: #FF7EB3;
+  background: rgba(255,126,179,0.06);
 }
 
 .dz-icon { font-size: 32px; }
@@ -100,7 +100,7 @@ html, body {
 
 .dz-browse:hover {
   background: #1E3268;
-  border-color: #E2186F;
+  border-color: #FF7EB3;
   color: #CCC5E0;
 }
 
@@ -148,7 +148,7 @@ html, body {
   font-style: italic;
   font-size: 24px;
   letter-spacing: -1px;
-  color: #E2186F;
+  color: #FF7EB3;
   line-height: 1;
   user-select: none;
 }
@@ -255,10 +255,10 @@ html, body {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #E2186F;
+  background: #FF7EB3;
   border: 2px solid #0E0E25;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(226,24,111,0.4);
+  box-shadow: 0 1px 4px rgba(255,126,179,0.5);
   transition: transform 0.1s;
 }
 
@@ -268,7 +268,7 @@ html, body {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #E2186F;
+  background: #FF7EB3;
   border: 2px solid #0E0E25;
   cursor: pointer;
 }
@@ -276,14 +276,14 @@ html, body {
 /* Background swatches */
 .swatch-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
   margin-bottom: 4px;
 }
 
 .swatch {
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 2px solid transparent;
   cursor: pointer;
   transition: transform 0.15s, border-color 0.15s;
@@ -291,7 +291,7 @@ html, body {
 }
 
 .swatch:hover { transform: scale(1.08); }
-.swatch.active { border-color: #E2186F; transform: scale(1.1); }
+.swatch.active { border-color: #FF7EB3; transform: scale(1.1); }
 
 .swatch--checker {
   background-image: repeating-conic-gradient(#ffffff 0% 25%, #1E3268 0% 50%);
@@ -331,7 +331,7 @@ html, body {
 }
 
 .bg-action-btn:hover { background: #1E3268; border-color: #243A7A; color: #CCC5E0; }
-.bg-action-btn.active { border-color: #E2186F; color: #E2186F; background: rgba(226,24,111,0.08); }
+.bg-action-btn.active { border-color: #FF7EB3; color: #FF7EB3; background: rgba(255,126,179,0.08); }
 
 /* Custom picked color indicator */
 .custom-bg-row {
@@ -344,7 +344,7 @@ html, body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid #E2186F;
+  border: 2px solid #FF7EB3;
   flex-shrink: 0;
   display: block;
 }
@@ -369,7 +369,7 @@ html, body {
   height: 48px;
   object-fit: cover;
   border-radius: 5px;
-  border: 1px solid #E2186F;
+  border: 1px solid #FF7EB3;
 }
 
 .btn-remove-bg-img {
@@ -413,7 +413,7 @@ html, body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.pill.active { background: #E2186F; border-color: transparent; color: #FFFFFF; font-weight: 700; }
+.pill.active { background: #FF7EB3; border-color: transparent; color: #FFFFFF; font-weight: 700; }
 .pill:hover:not(.active) { background: #1E3268; color: #CCC5E0; }
 
 /* Tool grid */
@@ -446,7 +446,7 @@ html, body {
 }
 
 .tool-cell:hover:not(.active) { background: #1E3268; color: #CCC5E0; }
-.tool-cell.active { background: #E2186F; border-color: transparent; color: #FFFFFF; }
+.tool-cell.active { background: #FF7EB3; border-color: transparent; color: #FFFFFF; }
 
 /* Color dots */
 .color-row {
@@ -467,7 +467,7 @@ html, body {
 }
 
 .color-dot--dark { box-shadow: inset 0 0 0 1px #4A5A8A; }
-.color-dot.active { border-color: #E2186F; transform: scale(1.15); }
+.color-dot.active { border-color: #FF7EB3; transform: scale(1.15); }
 .color-dot:hover:not(.active) { transform: scale(1.1); }
 
 /* Custom color "+" button */
@@ -482,7 +482,7 @@ html, body {
   justify-content: center;
 }
 
-.color-dot--custom:hover { background: #1E3268; border-color: #E2186F; color: #FF7EB3; }
+.color-dot--custom:hover { background: #1E3268; border-color: #FF7EB3; color: #FF7EB3; }
 
 /* Undo / Redo / Clear */
 .action-row {
@@ -568,12 +568,12 @@ html, body {
 }
 
 .export-btn--primary {
-  background: #E2186F;
+  background: #FF7EB3;
   border: 1px solid transparent;
   color: #FFFFFF;
 }
 
-.export-btn--primary:hover:not(:disabled) { background: #C4145F; }
+.export-btn--primary:hover:not(:disabled) { background: #E2186F; }
 
 .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -618,7 +618,7 @@ html, body {
 }
 
 .btn-color-action:hover { background: #1E3268; border-color: #243A7A; color: #CCC5E0; }
-.btn-color-action.active { background: #E2186F; border-color: transparent; color: #FFFFFF; }
+.btn-color-action.active { background: #FF7EB3; border-color: transparent; color: #FFFFFF; }
 
 /* ── Canvas fade-in ──────────────────────────────────────── */
 @keyframes sb-fadein {
@@ -652,10 +652,10 @@ html, body {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.btn-set-default:hover { border-color: #E2186F; color: #E2186F; }
+.btn-set-default:hover { border-color: #FF7EB3; color: #FF7EB3; }
 
 .btn-set-default.saved {
-  background: #E2186F;
+  background: #FF7EB3;
   border-color: transparent;
   color: #FFFFFF;
 }
@@ -681,7 +681,7 @@ html, body {
   transition: border-color 0.15s;
 }
 
-.preset-save-row input:focus { border-color: #E2186F; }
+.preset-save-row input:focus { border-color: #FF7EB3; }
 .preset-save-row input::placeholder { color: #2A3A6A; }
 
 .btn-save-preset {
@@ -698,7 +698,7 @@ html, body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.btn-save-preset:hover { background: #E2186F; border-color: transparent; color: #FFFFFF; }
+.btn-save-preset:hover { background: #FF7EB3; border-color: transparent; color: #FFFFFF; }
 
 .preset-chips {
   display: flex;
@@ -724,14 +724,14 @@ html, body {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.preset-chip:hover { background: #1E3268; border-color: #E2186F; color: #CCC5E0; }
+.preset-chip:hover { background: #1E3268; border-color: #FF7EB3; color: #CCC5E0; }
 
 .preset-chip--builtin::before {
   content: '';
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #E2186F;
+  background: #FF7EB3;
   flex-shrink: 0;
 }
 
@@ -788,7 +788,7 @@ html, body {
 }
 
 .tool-opt-pill:hover:not(.active) { background: #1E3268; color: #CCC5E0; }
-.tool-opt-pill.active { background: #E2186F; border-color: transparent; color: #FFFFFF; }
+.tool-opt-pill.active { background: #FF7EB3; border-color: transparent; color: #FFFFFF; }
 
 .zoom-label-input {
   width: 100%;
@@ -804,7 +804,7 @@ html, body {
   transition: border-color 0.15s;
 }
 
-.zoom-label-input:focus { border-color: #E2186F; }
+.zoom-label-input:focus { border-color: #FF7EB3; }
 .zoom-label-input::placeholder { color: #2A3A6A; }
 
 /* ── Annotation selection toolbar ────────────────────────── */

@@ -8,12 +8,6 @@ document.getElementById("btn-capture-region").addEventListener("click", () => {
   window.close();
 });
 
-document.getElementById("btn-settings").addEventListener("click", () => {
-  chrome.runtime.openOptionsPage?.() ??
-    chrome.tabs.create({ url: chrome.runtime.getURL("editor/editor.html") });
-  window.close();
-});
-
 /* ── Recent captures ─────────────────────────────────────── */
 
 function timeAgo(ts) {

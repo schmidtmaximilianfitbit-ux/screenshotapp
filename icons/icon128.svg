@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fb923c"/>
-      <stop offset="100%" stop-color="#f97316"/>
+      <stop offset="0%" stop-color="#E2186F"/>
+      <stop offset="100%" stop-color="#FF7EB3"/>
     </linearGradient>
   </defs>
   <!-- Body -->
@@ -10,13 +10,13 @@
   <!-- Viewfinder bump -->
   <path d="M44 36V22q0-6 6-6h28q6 0 6 6v14" fill="url(#g)"/>
   <!-- Lens dark ring -->
-  <circle cx="64" cy="74" r="24" fill="#0f172a"/>
-  <!-- Lens orange ring -->
-  <circle cx="64" cy="74" r="16" fill="none" stroke="#f97316" stroke-width="3.5"/>
+  <circle cx="64" cy="74" r="24" fill="#0E0E25"/>
+  <!-- Lens pink ring -->
+  <circle cx="64" cy="74" r="16" fill="none" stroke="#FF7EB3" stroke-width="3.5"/>
   <!-- Lens glow center -->
-  <circle cx="64" cy="74" r="7" fill="#f97316" opacity=".55"/>
+  <circle cx="64" cy="74" r="7" fill="#FF7EB3" opacity=".55"/>
   <!-- Flash LED -->
-  <circle cx="99" cy="53" r="5.5" fill="#0f172a"/>
+  <circle cx="99" cy="53" r="5.5" fill="#0E0E25"/>
   <!-- Highlight -->
   <circle cx="56" cy="66" r="4.5" fill="white" opacity=".3"/>
 </svg>

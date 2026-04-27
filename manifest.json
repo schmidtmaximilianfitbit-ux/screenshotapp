@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "SnapBeauty",
+  "name": "Snapz",
   "version": "1.0.0",
   "description": "Capture and beautify screenshots with annotations.",
   "permissions": ["activeTab", "scripting", "storage", "notifications", "contextMenus"],

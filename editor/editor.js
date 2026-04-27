@@ -38,14 +38,14 @@ const FONT_MAP = {
 
 const S = {
   img:              null,
-  padding:          48,
+  padding:          90,
   radius:           12,
   shadow:           40,
   bg:               'deepsea',
   bgCustomColor:    '#ffffff',
   bgCustomImage:    null,
   ratio:            'auto',
-  inset:            30,
+  inset:            40,
   insetColor:       '#ffffff',
   tool:             'draw',
   color:            '#1A2B5C',
@@ -329,15 +329,12 @@ function drawZoomLens(c, a, canvasW, canvasH) {
   const scx   = sx + sw / 2;
   const scy   = sy + sh / 2;
 
-  // Output lens = source × zoom factor.
+  // Output lens = source × zoom factor, centered on the source area.
   const lw = sw * zoom;
   const lh = sh * zoom;
 
-  // Position lens above the source; fall back to below if near the top edge.
-  const GAP = 16;
   let lx = scx - lw / 2;
-  let ly = sy - lh - GAP;
-  if (ly < 0) ly = sy + sh + GAP;
+  let ly = scy - lh / 2;
   // Clamp to canvas bounds.
   lx = Math.max(0, Math.min(lx, canvasW - lw));
   ly = Math.max(0, Math.min(ly, canvasH - lh));
@@ -388,21 +385,6 @@ function drawZoomLens(c, a, canvasW, canvasH) {
   c.setLineDash([]);
   c.restore();
 
-  // Leader line from source to lens.
-  c.save();
-  c.strokeStyle = a.color;
-  c.lineWidth   = 1;
-  c.globalAlpha = 0.5;
-  c.beginPath();
-  if (lcy < scy) {
-    c.moveTo(scx, sy);
-    c.lineTo(lcx, ly + lh);
-  } else {
-    c.moveTo(scx, sy + sh);
-    c.lineTo(lcx, ly);
-  }
-  c.stroke();
-  c.restore();
 }
 
 function render() {
@@ -725,6 +707,16 @@ canvas.addEventListener('mousedown', (e) => {
 
   // Check if clicking on an existing annotation to select/move it.
   const hitIdx = hitTestAnnotations(x, y);
+
+  // Clicking on an already-selected text annotation → re-edit the text.
+  if (hitIdx >= 0 && hitIdx === selectedIndex && S.annotations[hitIdx].type === 'text') {
+    const a = S.annotations.splice(hitIdx, 1)[0];
+    selectedIndex = -1;
+    positionSelectionToolbar();
+    spawnTextInput(e.clientX, e.clientY, a.x, a.y, a);
+    return;
+  }
+
   if (hitIdx >= 0) {
     mouseDown = true;
     selectedIndex = hitIdx;
@@ -844,38 +836,55 @@ function commitCurrent() {
 
 /* ── Floating text input ──────────────────────────────────── */
 
-function spawnTextInput(clientX, clientY, canvasX, canvasY) {
+function spawnTextInput(clientX, clientY, canvasX, canvasY, existingAnn = null) {
+  // Use the existing annotation's properties when re-editing, otherwise current sidebar state.
+  const annColor  = existingAnn ? existingAnn.color    : S.color;
+  const annFont   = existingAnn ? existingAnn.font      : S.textFont;
+  const annStyle  = existingAnn ? (existingAnn.textStyle || 'normal') : S.textStyle;
+  const annLw     = existingAnn ? existingAnn.lw        : S.lw;
+
+  const canvasFontSize = Math.max(16, annLw * 8);
+  // Scale canvas pixel font size to CSS pixels so the input matches what renders on canvas.
+  const r = canvas.getBoundingClientRect();
+  const cssScale = canvas.width > 0 ? r.width / canvas.width : 1;
+  const displayFontSize = Math.round(canvasFontSize * cssScale);
+
+  const isBold   = annStyle === 'bold';
+  const isItalic = annStyle === 'italic';
+
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.placeholder = 'Type here…';
-  const fontSize  = Math.max(16, S.lw * 8);
-  const isBold    = S.textStyle === 'bold';
-  const isItalic  = S.textStyle === 'italic';
+  if (existingAnn) inp.value = existingAnn.text;
+
+  // Position at the canvas annotation coordinates converted to screen coords.
+  const screenPos = existingAnn ? canvasToScreen(canvasX, canvasY) : { x: clientX, y: clientY };
+
   Object.assign(inp.style, {
     position:       'fixed',
-    left:           `${Math.min(clientX, window.innerWidth - 180)}px`,
-    top:            `${Math.min(clientY, window.innerHeight - 48)}px`,
+    left:           `${Math.min(screenPos.x, window.innerWidth - 180)}px`,
+    top:            `${Math.min(screenPos.y, window.innerHeight - 48)}px`,
     zIndex:         '99999',
     background:     'transparent',
     border:         'none',
-    borderBottom:   `2px solid ${S.color}`,
-    color:          S.color,
+    borderBottom:   `2px solid ${annColor}`,
+    color:          annColor,
     padding:        '3px 2px',
     borderRadius:   '0',
-    fontFamily:     FONT_MAP[S.textFont] || FONT_MAP.sans,
-    fontSize:       `${fontSize}px`,
+    fontFamily:     FONT_MAP[annFont] || FONT_MAP.sans,
+    fontSize:       `${displayFontSize}px`,
     fontWeight:     isBold ? 'bold' : 'normal',
     fontStyle:      isItalic ? 'italic' : 'normal',
-    textDecoration: S.textStyle === 'underline' ? 'underline' : 'none',
+    textDecoration: annStyle === 'underline' ? 'underline' : 'none',
     minWidth:       '120px',
     outline:        'none',
     boxShadow:      'none',
-    caretColor:     S.color,
+    caretColor:     annColor,
   });
   document.body.appendChild(inp);
 
-  // Defer focus so the triggering mousedown doesn't immediately re-blur.
-  requestAnimationFrame(() => inp.focus());
+  // Select all text when re-editing an existing annotation.
+  requestAnimationFrame(() => { inp.focus(); if (existingAnn) inp.select(); });
 
   let committed = false;
 
@@ -886,8 +895,8 @@ function spawnTextInput(clientX, clientY, canvasX, canvasY) {
     inp.remove();
     if (!text) return;
     S.annotations.push({
-      type: 'text', color: S.color, lw: S.lw, font: S.textFont,
-      textStyle: S.textStyle, text, x: canvasX, y: canvasY,
+      type: 'text', color: annColor, lw: annLw, font: annFont,
+      textStyle: annStyle, text, x: canvasX, y: canvasY,
     });
     S.undone = [];
     render();
@@ -1319,7 +1328,7 @@ function applySettings({ padding, radius, shadow, bg, bgCustomColor = '#ffffff',
   S.insetColor    = insetColor;
 
   // Sync slider positions and displayed values
-  document.getElementById('sl-padding').value        = padding;
+  document.getElementById('sl-padding').value         = padding;
   document.getElementById('val-padding').textContent  = padding + 'px';
   document.getElementById('sl-radius').value         = radius;
   document.getElementById('val-radius').textContent   = radius + 'px';
