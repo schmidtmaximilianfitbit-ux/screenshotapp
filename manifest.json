@@ -3,7 +3,7 @@
   "name": "Snapz",
   "version": "1.0.0",
   "description": "Capture and beautify screenshots with annotations.",
-  "permissions": ["activeTab", "scripting", "storage", "notifications", "contextMenus"],
+  "permissions": ["activeTab", "scripting", "storage", "notifications", "contextMenus", "identity"],
   "background": {
     "service_worker": "background.js"
   },

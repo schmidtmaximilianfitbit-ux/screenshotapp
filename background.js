@@ -44,7 +44,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === "region-selected") {
-    cropAndOpen(message.rect)
+    cropAndOpen(message.rect, _sender.tab?.url)
       .catch((err) => notify("Crop failed", err.message ?? "An unexpected error occurred."));
     sendResponse({ ok: true });
   }
@@ -64,7 +64,7 @@ async function captureTab() {
     throw err;
   }
 
-  await storeCapture(dataUrl);
+  await storeCapture(dataUrl, tab.url);
   await chrome.tabs.create({ url: EDITOR_URL });
 }
 
@@ -90,7 +90,7 @@ async function captureRegion() {
 
 /* ── Region capture: step 2 — receive coords, crop, open ────── */
 
-async function cropAndOpen(rect) {
+async function cropAndOpen(rect, tabUrl = null) {
   let dataUrl;
   try {
     dataUrl = await chrome.tabs.captureVisibleTab(null, { format: "png", quality: 100 });
@@ -100,7 +100,7 @@ async function cropAndOpen(rect) {
   }
 
   const cropped = await cropImage(dataUrl, rect);
-  await storeCapture(cropped);
+  await storeCapture(cropped, tabUrl);
   await chrome.tabs.create({ url: EDITOR_URL });
 }
 
@@ -109,7 +109,7 @@ async function cropAndOpen(rect) {
 // Store the full capture (as smaller JPEG) plus a 120×75 thumbnail in
 // captureHistory[], keeping the 3 most recent.  The original dataUrl is always
 // written to capturedImage so the editor gets full-res PNG on first open.
-async function storeCapture(dataUrl) {
+async function storeCapture(dataUrl, tabUrl = null) {
   const resp   = await fetch(dataUrl);
   const blob   = await resp.blob();
   const bitmap = await createImageBitmap(blob);
@@ -138,8 +138,11 @@ async function storeCapture(dataUrl) {
   captureHistory.unshift({ thumb, full: fullJpeg, ts: Date.now() });
   if (captureHistory.length > 3) captureHistory.length = 3;
 
-  await chrome.storage.local.set({ capturedImage: dataUrl, captureHistory })
-    .catch(() => chrome.storage.local.set({ capturedImage: dataUrl }));
+  const extra = { captureTimestamp: Date.now() };
+  if (tabUrl) extra.captureUrl = tabUrl;
+
+  await chrome.storage.local.set({ capturedImage: dataUrl, captureHistory, ...extra })
+    .catch(() => chrome.storage.local.set({ capturedImage: dataUrl, ...extra }));
 }
 
 /* ── Helpers ─────────────────────────────────────────────────── */
