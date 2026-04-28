@@ -59,6 +59,10 @@ const S = {
   annotations:      [],
   undone:           [],
   current:          null,
+  footerEnabled:    false,
+  captureUrl:       null,
+  captureTimestamp: null,
+  captureUser:      null,
 };
 
 // Set by render(); used by zoom lens to map canvas→image coordinates.
@@ -316,6 +320,81 @@ function drawArrow(c, x1, y1, x2, y2, lw) {
   c.fill();
 }
 
+/* ── Footer helpers ───────────────────────────────────────── */
+
+function colorLuminance(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function isBackgroundLight() {
+  const { bg, bgCustomColor } = S;
+  if (bg === 'custom-color') return colorLuminance(bgCustomColor) > 0.35;
+  if (bg === 'none') return true;
+  if (bg === 'custom-image') return false;
+  const stops = BG_PRESETS[bg];
+  if (!stops) return false;
+  const avg = stops.reduce((s, c) => s + colorLuminance(c), 0) / stops.length;
+  return avg > 0.35;
+}
+
+function formatTimestamp(ts) {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${date}  ${time}`;
+}
+
+function extractUrlLabel(url) {
+  if (!url) return '';
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const parts = host.split('.');
+    if (parts.length > 1) parts.pop();
+    return parts.join('.');
+  } catch { return ''; }
+}
+
+function emailToName(email) {
+  if (!email) return '';
+  const local = email.split('@')[0];
+  return local.split(/[._\-+]/)
+    .slice(0, 2)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function drawFooter(c, w, h, dims) {
+  if (!S.footerEnabled) return;
+
+  const light    = isBackgroundLight();
+  const textColor = light ? '#1A2B5C' : 'rgba(255,255,255,0.82)';
+  const fontSize = Math.max(11, Math.round(Math.min(dims.imgX, dims.imgY) * 0.28));
+  const padX     = dims.imgX;
+  const baseY    = h - Math.max(10, Math.round(dims.imgY * 0.28));
+
+  c.save();
+  c.font         = `500 ${fontSize}px Montserrat, system-ui, sans-serif`;
+  c.fillStyle    = textColor;
+  c.textBaseline = 'alphabetic';
+
+  const name = S.captureUser || '';
+  c.textAlign = 'left';
+  c.fillText(name, padX, baseY);
+
+  const ts = formatTimestamp(S.captureTimestamp || Date.now());
+  c.textAlign = 'center';
+  c.fillText(ts, w / 2, baseY);
+
+  const label = extractUrlLabel(S.captureUrl || '');
+  c.textAlign = 'right';
+  c.fillText(label, w - padX, baseY);
+
+  c.restore();
+}
+
 function drawZoomLens(c, a, canvasW, canvasH) {
   if (!S.img || !lastDims) return;
 
@@ -370,20 +449,6 @@ function drawZoomLens(c, a, canvasW, canvasH) {
   c.stroke();
   c.restore();
 
-  // Dashed source-area indicator.
-  c.save();
-  c.strokeStyle = a.color;
-  c.lineWidth   = 1.5;
-  c.setLineDash([3, 2]);
-  if (shape === 'circle') {
-    c.beginPath();
-    c.arc(scx, scy, Math.min(sw, sh) / 2, 0, Math.PI * 2);
-    c.stroke();
-  } else {
-    c.strokeRect(sx, sy, sw, sh);
-  }
-  c.setLineDash([]);
-  c.restore();
 
 }
 
@@ -400,6 +465,8 @@ function render() {
 
   const all = [...S.annotations, ...(S.current ? [S.current] : [])];
   all.forEach(a => drawAnnotation(ctx, a, dims.w, dims.h));
+
+  drawFooter(ctx, dims.w, dims.h, dims);
 
   drawSelectionOverlay(ctx);
   positionSelectionToolbar();
@@ -1503,10 +1570,13 @@ chrome.storage.sync.get(['presets', 'defaultSettings'], ({ presets, defaultSetti
 
   if (defaultSettings) applySettings(defaultSettings);
 
-  chrome.storage.local.get('capturedImage', ({ capturedImage }) => {
-    if (capturedImage) {
+  chrome.storage.local.get(['capturedImage', 'captureUrl', 'captureTimestamp'], (res) => {
+    if (res.captureUrl)       S.captureUrl       = res.captureUrl;
+    if (res.captureTimestamp) S.captureTimestamp  = res.captureTimestamp;
+
+    if (res.capturedImage) {
       chrome.storage.local.remove('capturedImage');
-      loadImage(capturedImage);
+      loadImage(res.capturedImage);
     } else {
       updateUI();
     }
@@ -1562,3 +1632,18 @@ document.getElementById('btn-clear-image').addEventListener('click', () => {
   positionSelectionToolbar();
   updateUI();
 });
+
+// Footer toggle
+document.getElementById('chk-footer').addEventListener('change', function () {
+  S.footerEnabled = this.checked;
+  render();
+});
+
+// Load user identity for footer name
+if (chrome.identity?.getProfileUserInfo) {
+  try {
+    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (info) => {
+      if (info?.email) S.captureUser = emailToName(info.email);
+    });
+  } catch (_) {}
+}
