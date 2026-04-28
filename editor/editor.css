@@ -284,14 +284,14 @@ html, body {
 .swatch {
   aspect-ratio: 1;
   border-radius: 4px;
-  border: 2px solid transparent;
+  border: 2px solid #3D5299;
   cursor: pointer;
   transition: transform 0.15s, border-color 0.15s;
   outline: none;
 }
 
 .swatch:hover { transform: scale(1.08); }
-.swatch.active { border-color: #FF7EB3; transform: scale(1.1); }
+.swatch.active { border-color: #3D5299; transform: scale(1.1); box-shadow: 0 0 0 1.5px #CCC5E0; }
 
 .swatch--checker {
   background-image: repeating-conic-gradient(#ffffff 0% 25%, #1E3268 0% 50%);
@@ -840,3 +840,45 @@ html, body {
 }
 
 .ann-tb-delete:hover { background: #ef4444; border-color: #ef4444; color: #FFFFFF; }
+
+/* ── Footer toggle row ───────────────────────────────────── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+}
+
+.toggle-switch { display: inline-flex; align-items: center; cursor: pointer; }
+.toggle-switch input { display: none; }
+
+.toggle-track {
+  width: 34px;
+  height: 18px;
+  background: #1A2B5C;
+  border: 1px solid #1E3268;
+  border-radius: 9px;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #4A5A8A;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-track {
+  background: rgba(255,126,179,0.18);
+  border-color: #FF7EB3;
+}
+
+.toggle-switch input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+  background: #FF7EB3;
+}
